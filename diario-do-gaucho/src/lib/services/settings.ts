@@ -10,7 +10,7 @@ export async function getSetting<T>(key: string): Promise<T | null> {
 
 export async function setSetting(key: string, value: unknown) {
   await q(
-    `insert into settings (key, value, updated_at) values ($1, $2::jsonb, now())
+    `insert into settings (key, value, updated_at) values ($1, $2::text::jsonb, now())
      on conflict (key) do update set value = excluded.value, updated_at = now()`,
     [key, JSON.stringify(value)],
   );

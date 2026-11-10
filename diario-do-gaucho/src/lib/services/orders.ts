@@ -158,7 +158,7 @@ export async function confirmPayment(input: ConfirmInput): Promise<ConfirmResult
 
     await t.query(
       `insert into transactions (order_id, provider, provider_payment_id, status, amount_cents, source, note, raw)
-       values ($1,$2,$3,$4,$5,$6,$7,$8::jsonb)
+       values ($1,$2,$3,$4,$5,$6,$7,$8::text::jsonb)
        on conflict (provider, provider_payment_id, status) do nothing`,
       [
         order.id,
@@ -232,6 +232,17 @@ export async function confirmManually(orderId: string, reference: string) {
   if (!order) throw new OrderError("Pedido não encontrado.", "not_found", 404);
   if (order.payment_provider !== "static") {
     throw new OrderError("Pedidos com provedor automático são confirmados apenas pelo provedor.", "not_manual");
+  }
+  const [used] = await q<{ code: string }>(
+    "select code from orders where payment_provider='static' and provider_payment_id=$1 and id<>$2",
+    [`manual:${ref}`, order.id],
+  );
+  if (used) {
+    throw new OrderError(
+      `Esta transação já está vinculada ao pedido ${used.code}. Confira o identificador no extrato.`,
+      "reference_used",
+      409,
+    );
   }
   return confirmPayment({
     provider: "static",

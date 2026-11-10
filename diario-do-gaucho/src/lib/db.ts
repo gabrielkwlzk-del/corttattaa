@@ -133,6 +133,10 @@ export function splitSql(text: string): string[] {
 
 async function init(): Promise<Db> {
   const url = env.databaseUrl;
+  if (!url && process.env.NODE_ENV === "production") {
+    // Em produção o banco local em arquivo seria perdido a cada deploy.
+    throw new Error("DATABASE_URL não configurada. Defina a conexão PostgreSQL/Supabase.");
+  }
   let db: Db;
   if (!url) db = await createPglite(path.join(process.cwd(), ".data", "pglite"));
   else if (url === "memory://") db = await createPglite();
