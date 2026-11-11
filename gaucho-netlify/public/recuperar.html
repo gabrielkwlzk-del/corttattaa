@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Recuperar compra — Diário do Gaúcho</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#08090D">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+<main id="conteudo" class="page" style="max-width:560px;min-height:70vh;display:flex;flex-direction:column;justify-content:center">
+  <p class="eyebrow">Minhas compras</p>
+  <h1 class="pagetitle">Recupere sua compra.</h1>
+  <p class="muted" style="margin-top:12px">Cole o link do seu pedido (ou o código de acesso que aparece nele) para ver o status e baixar suas fotografias.</p>
+  <form id="f" class="glass card form" style="margin-top:28px;border-radius:28px" novalidate>
+    <div><label class="label" for="t">Link ou código do pedido</label><input class="field" id="t" placeholder="https://…/pedido/…" autocomplete="off" spellcheck="false" style="font-family:ui-monospace,Menlo,monospace;font-size:.85rem"></div>
+    <p class="err hidden" id="e" role="alert"></p>
+    <button class="btn btn-primary btn-block" type="submit">Acessar pedido</button>
+  </form>
+</main>
+<div id="footer"></div>
+<script type="module" src="/js/recuperar.js"></script>
+</body>
+</html>

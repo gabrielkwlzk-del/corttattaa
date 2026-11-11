@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Diário do Gaúcho — Fotografia esportiva</title>
+<meta name="description" content="Encontre os melhores registros dos seus momentos no esporte.">
+<meta name="theme-color" content="#08090D">
+<meta property="og:title" content="Diário do Gaúcho — Fotografia esportiva">
+<meta property="og:description" content="Cada momento merece ser lembrado.">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preload" href="/fonts/inter-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+<a class="skip" href="#galeria">Pular para a galeria</a>
+
+<main id="conteudo">
+  <section class="hero" aria-label="Destaque">
+    <div class="hero-aurora" aria-hidden="true"></div>
+    <div class="hero-bg" id="heroBg" aria-hidden="true"></div>
+    <div class="hero-shade" aria-hidden="true"></div>
+    <div class="wrap hero-grid">
+      <div>
+        <p class="tagline">Fotografia esportiva</p>
+        <h1 aria-label="Cada momento merece ser lembrado.">
+          <span class="w" aria-hidden="true"><span style="--i:0">Cada</span></span><span class="w" aria-hidden="true"><span style="--i:1">momento</span></span><span class="w" aria-hidden="true"><span style="--i:2">merece</span></span><span class="w" aria-hidden="true"><span style="--i:3">ser</span></span><span class="w" aria-hidden="true"><span style="--i:4">lembrado.</span></span>
+        </h1>
+        <p class="hero-sub">Encontre os melhores registros dos seus momentos no esporte.</p>
+        <div class="hero-cta">
+          <a class="btn btn-primary btn-lg" href="#galeria">Explorar fotografias <span id="icDown"></span></a>
+          <a class="btn btn-glass btn-lg" href="/recuperar">Minhas compras</a>
+        </div>
+        <ul class="hero-stats" id="heroStats"></ul>
+      </div>
+      <div class="strip glass-strong" id="strip" aria-label="Destaques"></div>
+    </div>
+    <a class="scroll-cue" href="#galeria" aria-label="Rolar para a galeria"></a>
+  </section>
+
+  <section class="section wrap" id="galeria" aria-labelledby="gt">
+    <p class="eyebrow reveal">Galeria</p>
+    <h2 id="gt" class="reveal">Encontre o seu momento.</h2>
+    <p class="lead reveal">Pesquise ou filtre por modalidade. Toque em uma fotografia para ver em tamanho ampliado.</p>
+
+    <div class="filters glass-strong">
+      <label class="search"><span class="sr-only">Pesquisar fotografias</span><span id="icSearch"></span><input class="field" id="q" type="search" placeholder="Pesquisar por atleta, evento, modalidade…" autocomplete="off"></label>
+      <div class="chips" id="chips" role="group" aria-label="Modalidades"></div>
+    </div>
+
+    <div class="count" aria-live="polite"><span id="count">Carregando…</span><button class="btn btn-glass btn-sm hidden" id="clear" type="button">Limpar filtros</button></div>
+    <ul class="grid" id="grid"></ul>
+    <div class="empty glass hidden" id="empty"><h3 id="emptyT">Nenhuma fotografia encontrada</h3><p class="muted" id="emptyP" style="margin-top:8px"></p></div>
+  </section>
+</main>
+
+<div id="footer"></div>
+
+<!-- modal da fotografia -->
+<div class="modal" id="modal" aria-hidden="true">
+  <button class="modal-bg" id="mBg" type="button" aria-label="Fechar" tabindex="-1"></button>
+  <div class="sheet glass-strong" role="dialog" aria-modal="true" aria-labelledby="mTitle" tabindex="-1" id="sheet">
+    <div class="stage">
+      <img id="mImg" alt="" draggable="false">
+      <button class="btn btn-glass nav-arrow l" id="mPrev" type="button" aria-label="Foto anterior"></button>
+      <button class="btn btn-glass nav-arrow r" id="mNext" type="button" aria-label="Próxima foto"></button>
+      <span class="protected glass" id="mProt"></span>
+    </div>
+    <aside class="side">
+      <div class="side-head">
+        <div style="min-width:0"><p class="eyebrow" id="mEvt" style="margin-bottom:8px"></p><h3 id="mTitle"></h3></div>
+        <button class="btn btn-glass x" id="mClose" type="button" aria-label="Fechar"></button>
+      </div>
+      <p id="mDesc" class="muted"></p>
+      <dl class="meta" id="mMeta"></dl>
+
+      <div id="stepBuy" style="display:grid;gap:16px;margin-top:auto">
+        <div class="buy-row"><span class="muted">Valor</span><strong id="mPrice"></strong></div>
+        <button class="btn btn-sky btn-lg btn-block" id="buyBtn" type="button">Comprar fotografia</button>
+        <p class="note" id="mNote"></p>
+      </div>
+
+      <form id="stepForm" class="form hidden" style="margin-top:auto" novalidate>
+        <div><label class="label" for="email">Seu e-mail</label><input class="field" id="email" type="email" required autocomplete="email" inputmode="email" placeholder="voce@exemplo.com"></div>
+        <div><label class="label" for="name">Nome <span class="muted">(opcional)</span></label><input class="field" id="name" autocomplete="name"></div>
+        <p class="err hidden" id="formErr" role="alert"></p>
+        <button class="btn btn-sky btn-lg btn-block" id="payBtn" type="submit">Pagar com Pix</button>
+        <button class="btn btn-glass btn-block" id="backBtn" type="button">Voltar</button>
+      </form>
+    </aside>
+  </div>
+</div>
+
+<script type="module" src="/js/app.js"></script>
+</body>
+</html>
