@@ -1,0 +1,10 @@
+# Netlify: o site fica nesta pasta (defina "Base directory" = diario-do-gaucho
+# no painel, ou publique o repositório apontando para esta pasta).
+[build]
+  command = "npm ci && npm run build"
+  publish = ".next"
+
+[build.environment]
+  # Next 16 exige Node >= 20.9; Netlify pode usar uma versão antiga por padrão.
+  NODE_VERSION = "22"
+  NEXT_TELEMETRY_DISABLED = "1"
