@@ -9,7 +9,7 @@ export const config = { path: "/api/*" };
 
 // ---------------------------------------------------------------- config --
 const PIX_KEY = () => process.env.PIX_KEY || "47992145561";
-const PIX_NAME = () => process.env.PIX_NAME || "Diario do Gaucho";
+const PIX_NAME = () => process.env.PIX_NAME || "Esporte Show Online";
 const PIX_CITY = () => process.env.PIX_CITY || "BRASIL";
 const COOKIE = "dg_admin";
 const SESSION_HOURS = 12;
@@ -128,8 +128,12 @@ async function ensureSeed() {
 
 const urls = (p) =>
   p.seed
-    ? { thumbUrl: `/p/${p.id}-t.webp`, previewUrl: `/p/${p.id}.webp` }
-    : { thumbUrl: `/api/preview/${p.id}/thumb?v=${p.v ?? 1}`, previewUrl: `/api/preview/${p.id}/preview?v=${p.v ?? 1}` };
+    ? { thumbUrl: `/p/${p.id}-t.webp`, previewUrl: `/p/${p.id}.webp`, heroUrl: `/p/${p.id}-h.webp` }
+    : {
+        thumbUrl: `/api/preview/${p.id}/thumb?v=${p.v ?? 1}`,
+        previewUrl: `/api/preview/${p.id}/preview?v=${p.v ?? 1}`,
+        heroUrl: `/api/preview/${p.id}/hero?v=${p.v ?? 1}`,
+      };
 
 const publicPhoto = (p) => ({
   id: p.id,
@@ -186,6 +190,7 @@ async function uploadPhoto(req) {
     db().set(`file/orig/${id}`, ab(buffer)),
     db().set(`file/prev/${id}`, ab(img.preview)),
     db().set(`file/thumb/${id}`, ab(img.thumb)),
+    db().set(`file/hero/${id}`, ab(img.hero)),
   ]);
   const photo = {
     id,
@@ -335,7 +340,10 @@ async function handle(req, context) {
     const p = await getJSON(`photo/${id}`);
     const admin = await isAdmin(req);
     if (!p || p.seed || p.deleted || (p.hidden && !admin)) return json({ error: "Não encontrado." }, 404);
-    const data = await db().get(`file/${variant === "thumb" ? "thumb" : "prev"}/${id}`, { type: "arrayBuffer" });
+    const kind = variant === "thumb" ? "thumb" : variant === "hero" ? "hero" : "prev";
+    let data = await db().get(`file/${kind}/${id}`, { type: "arrayBuffer" });
+    // Fotos antigas sem versão de fundo: usa a miniatura (que já tem marca d'água).
+    if (!data && kind === "hero") data = await db().get(`file/thumb/${id}`, { type: "arrayBuffer" });
     if (!data) return json({ error: "Não encontrado." }, 404);
     return new Response(data, {
       headers: {
@@ -391,7 +399,7 @@ async function handle(req, context) {
     return new Response(file, {
       headers: {
         "content-type": "application/octet-stream",
-        "content-disposition": `attachment; filename="diario-do-gaucho-${slug(item.title)}-${order.code}.${ext}"`,
+        "content-disposition": `attachment; filename="esporte-show-online-${slug(item.title)}-${order.code}.${ext}"`,
         "cache-control": "private, no-store",
         "x-robots-tag": "noindex",
       },
@@ -445,7 +453,7 @@ async function handle(req, context) {
           await setJSON(`photo/${p.id}`, p);
           return json({ archived: true });
         }
-        await Promise.all([del(`photo/${p.id}`), del(`file/orig/${p.id}`), del(`file/prev/${p.id}`), del(`file/thumb/${p.id}`)]);
+        await Promise.all([del(`photo/${p.id}`), del(`file/orig/${p.id}`), del(`file/prev/${p.id}`), del(`file/thumb/${p.id}`), del(`file/hero/${p.id}`)]);
         return json({ removed: true });
       }
     }

@@ -77,7 +77,7 @@ export const icons = {
   pix: ic('<path d="m12 2.8 4.3 4.3-2.1 2.1a3 3 0 0 1-4.3 0L7.7 7.1 12 2.8ZM12 21.2l-4.3-4.3 2.1-2.1a3 3 0 0 1 4.3 0l2.1 2.1-4.2 4.3ZM2.8 12l3.1-3.1h1.6l2.4 2.4a1 1 0 0 0 1.4 0M21.2 12l-3.1 3.1h-1.6l-2.4-2.4a1 1 0 0 0-1.4 0"/>', 1.6),
 };
 
-export const LOGO = `<a class="logo" href="/" aria-label="Diário do Gaúcho — início"><i><svg viewBox="0 0 24 24" fill="none" stroke="#08090D" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M4 8.5V7a3 3 0 0 1 3-3h1.5M20 8.5V7a3 3 0 0 0-3-3h-1.5M4 15.5V17a3 3 0 0 0 3 3h1.5M20 15.5V17a3 3 0 0 1-3 3h-1.5"/></svg></i>Diário do Gaúcho</a>`;
+export const LOGO = `<a class="logo" href="/" aria-label="Esporte Show Online — início"><i><svg viewBox="0 0 24 24" fill="none" stroke="#08090D" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M4 8.5V7a3 3 0 0 1 3-3h1.5M20 8.5V7a3 3 0 0 0-3-3h-1.5M4 15.5V17a3 3 0 0 0 3 3h1.5M20 15.5V17a3 3 0 0 1-3 3h-1.5"/></svg></i>Esporte Show Online</a>`;
 
 export function mountChrome() {
   const nav = document.createElement("header");
@@ -90,7 +90,7 @@ export function mountChrome() {
 }
 
 export function footer() {
-  return `<footer class="foot"><div class="wrap foot-in"><div>${LOGO}<p>Fotografia esportiva com cuidado editorial. Prévias protegidas por marca d'água; o arquivo original em alta resolução é liberado somente após a confirmação do pagamento.</p></div><div class="foot-links"><div><b>Navegar</b><a href="/#galeria">Galeria</a><a href="/recuperar">Recuperar compra</a></div><div><b>Pagamento</b><span>Pix · BRL</span><span>Liberação segura</span></div></div></div><div class="wrap copy">© ${new Date().getFullYear()} Diário do Gaúcho. Todos os direitos reservados.</div></footer>`;
+  return `<footer class="foot"><div class="wrap foot-in"><div>${LOGO}<p>Fotografia esportiva com cuidado editorial. Prévias protegidas por marca d'água; o arquivo original em alta resolução é liberado somente após a confirmação do pagamento.</p></div><div class="foot-links"><div><b>Navegar</b><a href="/#galeria">Galeria</a><a href="/recuperar">Recuperar compra</a></div><div><b>Pagamento</b><span>Pix · BRL</span><span>Liberação segura</span></div></div></div><div class="wrap copy">© ${new Date().getFullYear()} Esporte Show Online. Todos os direitos reservados.</div></footer>`;
 }
 
 export function reveal(root = document) {

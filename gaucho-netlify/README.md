@@ -1,4 +1,4 @@
-# Diário do Gaúcho — site para Netlify
+# Esporte Show Online — site para Netlify
 
 Site de fotografia esportiva feito para rodar **nativamente na Netlify**: páginas estáticas
 (HTML, CSS e JavaScript puro) + uma Netlify Function para o servidor + Netlify Blobs para guardar
@@ -11,7 +11,7 @@ os dados. **Não precisa de banco de dados nem de outro serviço.**
 - **Pix direto para a conta do Gaúcho:** chave `47992145561` (celular). O dinheiro cai na conta, sem intermediário.
 - **Painel `/admin` com senha:** visão geral, pedidos (confirmar pagamento), fotografias (editar preço,
   nome, modalidade, ocultar, excluir), envio de várias fotos de uma vez e configurações.
-- **Prévia protegida:** a marca d'água "Diário do Gaúcho" é gravada nos pixels, no servidor (não é CSS).
+- **Prévia protegida:** a marca d'água "Esporte Show Online" (ícone + nome, em padrão diagonal, selo central e etiqueta no canto) é gravada nos pixels, no servidor (não é CSS).
   O original nunca é público: só sai por link assinado de 5 minutos depois do pagamento confirmado.
 
 ## Como o pagamento funciona (importante)
@@ -49,7 +49,7 @@ tiver sido trocada pelo painel). O painel bloqueia por 15 minutos depois de 5 te
 | Variável | Para quê | Padrão |
 |---|---|---|
 | `PIX_KEY` | Chave Pix que recebe | `47992145561` |
-| `PIX_NAME` | Nome que aparece no QR Code | `Diario do Gaucho` |
+| `PIX_NAME` | Nome que aparece no QR Code | `Esporte Show Online` |
 | `PIX_CITY` | Cidade no QR Code | `BRASIL` |
 | `ADMIN_PASSWORD` | Senha do painel | (hash embutido) |
 

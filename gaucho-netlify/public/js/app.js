@@ -19,7 +19,8 @@ function initHero(photos) {
   const strip = $("#strip");
   const show = photos.slice(0, 5);
   if (!show.length) return;
-  bg.innerHTML = show.map((p, i) => `<img src="${p.previewUrl}" alt="" draggable="false" ${i === 0 ? 'fetchpriority="high"' : ""}>`).join("");
+  // Fundo decorativo borrado e sem texto; as fotos nítidas (com marca d'água) ficam só na galeria.
+  bg.innerHTML = show.map((p, i) => `<img src="${p.heroUrl}" alt="" draggable="false" ${i === 0 ? 'fetchpriority="high"' : ""}>`).join("");
   const imgs = $$("img", bg);
   let cur = 0;
   const set = (i) => {
@@ -64,7 +65,6 @@ function renderGrid() {
       (p, i) => `<li><button class="photo" type="button" data-id="${p.id}" style="--d:${(i % 8) * 0.04}s" aria-label="${esc(p.title)}${p.modalidade ? ` — ${esc(p.modalidade)}` : ""}, ${price(p.priceCents)}">
         <div class="ph skeleton"><img src="${p.thumbUrl}" alt="${esc(p.title)}" loading="lazy" decoding="async" draggable="false" style="opacity:0"></div>
         <span class="price glass">${price(p.priceCents)}</span>
-        <span class="cap"><b>${esc(p.title)}</b>${p.modalidade || p.evento ? `<small>${esc([p.evento, p.modalidade].filter(Boolean).join(" · "))}</small>` : ""}</span>
       </button></li>`,
     )
     .join("");

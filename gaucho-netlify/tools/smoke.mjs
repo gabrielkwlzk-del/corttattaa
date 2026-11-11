@@ -68,6 +68,15 @@ const pm = await sharp(upPrev).metadata();
 assert.equal(pm.format, "webp");
 assert.ok(Math.max(pm.width, pm.height) <= 1600 && !upPrev.equals(jpg), "prévia reduzida e diferente do original");
 
+const heroRes = await call(up.heroUrl);
+assert.equal(heroRes.status, 200);
+const heroBuf = Buffer.from(await heroRes.arrayBuffer());
+const hm = await sharp(heroBuf).metadata();
+assert.equal(hm.format, "webp");
+assert.ok(Math.max(hm.width, hm.height) <= 1200 && !heroBuf.equals(upPrev), "fundo do topo é uma versão reduzida e borrada");
+assert.equal((await call(seed.heroUrl)).status, 200);
+ok("fundo borrado (sem texto) gerado para fotos novas e de exemplo");
+
 // 5. compra: preço vem do servidor
 const guest = (path, opts = {}) => fetch(BASE + path, { ...opts, headers: { origin: BASE, ...(opts.headers || {}) } });
 r = await j(await guest("/api/orders", { method: "POST", body: JSON.stringify({ photoIds: [up.id], email: "cliente@exemplo.com", priceCents: 1, amountCents: 1 }) }));
@@ -105,7 +114,7 @@ r = await j(await guest(`/api/orders/${token}/download/${up.id}`, { method: "POS
 assert.equal(r.s, 200);
 const dl = await guest(r.b.url);
 assert.equal(dl.status, 200);
-assert.match(dl.headers.get("content-disposition"), /attachment; filename="diario-do-gaucho-foto-de-teste-/);
+assert.match(dl.headers.get("content-disposition"), /attachment; filename="esporte-show-online-foto-de-teste-/);
 const got = Buffer.from(await dl.arrayBuffer());
 assert.ok(got.equals(jpg), "o arquivo baixado é o original, byte a byte");
 ok("download do ORIGINAL por link assinado (byte a byte igual ao enviado)");

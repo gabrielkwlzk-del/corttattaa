@@ -1,4 +1,4 @@
-# Diário do Gaúcho — site estático + Netlify Functions (sem banco externo: usa Netlify Blobs).
+# Esporte Show Online — site estático + Netlify Functions (sem banco externo: usa Netlify Blobs).
 [build]
   publish = "public"
   command = "echo 'sem etapa de build'"

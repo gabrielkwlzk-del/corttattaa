@@ -1,5 +1,5 @@
 // Gera os arquivos de semente a partir das fotos originais:
-//  - public/p/<id>.webp e <id>-t.webp (prévia e miniatura COM marca d'água)
+//  - public/p/<id>.webp e <id>-t.webp (prévia e miniatura COM marca d'água) e <id>-h.webp (fundo borrado, sem texto)
 //  - netlify/lib/seed-data.mjs (originais embutidos no servidor, nunca públicos)
 //  - netlify/lib/font-data.mjs (fonte da marca d'água)
 // Uso: node tools/make-seed.mjs <pasta-com-1.webp..8.webp>
@@ -37,6 +37,7 @@ for (const [i, m] of META.entries()) {
   const img = await processImage(buf);
   fs.writeFileSync(path.join(root, "public/p", `${id}.webp`), img.preview);
   fs.writeFileSync(path.join(root, "public/p", `${id}-t.webp`), img.thumb);
+  fs.writeFileSync(path.join(root, "public/p", `${id}-h.webp`), img.hero);
   out.push({ id, title: m.title, modalidade: m.modalidade, width: img.width, height: img.height, format: img.format, mime: img.mime, b64: buf.toString("base64") });
   console.log(id, img.width + "x" + img.height, (buf.length / 1024).toFixed(0) + "KB");
 }
