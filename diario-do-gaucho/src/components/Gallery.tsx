@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import type { EventRow, ModalityRow, PublicPhoto } from "@/lib/types";
-import { IconCalendar, IconClose, IconSearch } from "./Icons";
+import { IconArrowRight, IconCalendar, IconClose, IconSearch } from "./Icons";
 import { formatDate, formatPrice, thumbUrl } from "./media";
 import { PhotoModal } from "./PhotoModal";
 
@@ -128,7 +128,7 @@ export function Gallery({ initialPhotos, initialHasMore, initialFilters, initial
       </div>
 
       {/* Filtros */}
-      <div className="glass sticky top-[84px] z-30 mb-8 rounded-[28px] p-3 sm:top-[92px]">
+      <div className="glass-strong mb-8 rounded-[28px] p-2.5 sm:p-3 lg:sticky lg:top-[96px] lg:z-30">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
           <label className="relative flex-1">
             <span className="sr-only">Pesquisar fotografias</span>
@@ -219,7 +219,7 @@ export function Gallery({ initialPhotos, initialHasMore, initialFilters, initial
         <EmptyState filtered={activeCount > 0} />
       ) : (
         <motion.ul
-          className={`columns-2 gap-3 sm:gap-4 md:columns-3 xl:columns-4 transition-opacity duration-300 ${loading && page === 1 ? "opacity-50" : ""}`}
+          className={`grid grid-cols-2 gap-3 transition-opacity duration-300 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4 ${loading && page === 1 ? "opacity-50" : ""}`}
         >
           {photos.map((p, i) => (
             <PhotoCard key={p.id} photo={p} index={i % 24} onOpen={() => openPhoto(p)} />
@@ -252,28 +252,31 @@ export function Gallery({ initialPhotos, initialHasMore, initialFilters, initial
 }
 
 function PhotoCard({ photo, index, onOpen }: { photo: PublicPhoto; index: number; onOpen: () => void }) {
-  const ratio = photo.width && photo.height ? `${photo.width} / ${photo.height}` : "4 / 3";
   const [loaded, setLoaded] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
+  // Se a imagem terminou de carregar antes da hidratação, onLoad não dispara.
+  useEffect(() => {
+    if (imgRef.current?.complete && imgRef.current.naturalWidth > 0) setLoaded(true);
+  }, []);
+  const caption = [photo.event_name, photo.modality_name].filter(Boolean).join(" · ");
   return (
     <motion.li
       initial={{ opacity: 0, y: 28 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-40px" }}
       transition={{ type: "spring", stiffness: 140, damping: 22, delay: (index % 8) * 0.04 }}
-      className="mb-3 break-inside-avoid sm:mb-4"
+      className="min-w-0"
     >
       <motion.button
         type="button"
         onClick={onOpen}
-        whileHover={{ y: -4 }}
         whileTap={{ scale: 0.985 }}
-        transition={{ type: "spring", stiffness: 300, damping: 26 }}
-        className="group relative block w-full overflow-hidden rounded-[22px] bg-ink-3 text-left shadow-[0_20px_50px_-24px_rgba(0,0,0,0.9)] ring-1 ring-white/[0.06] transition-shadow duration-500 hover:shadow-[0_30px_70px_-20px_rgba(120,169,255,0.25)] sm:rounded-[26px]"
-        aria-label={`${photo.title || "Fotografia"}${photo.event_name ? ` — ${photo.event_name}` : ""}, ${formatPrice(photo.price_cents)}`}
+        className="group relative block w-full overflow-hidden rounded-[22px] bg-ink-3 text-left ring-1 ring-white/[0.07] shadow-[0_18px_44px_-26px_rgba(0,0,0,0.95)] transition-[box-shadow,transform] duration-500 [transition-timing-function:var(--ease-apple)] hover:-translate-y-1 hover:shadow-[0_30px_70px_-24px_rgba(120,169,255,0.28)] sm:rounded-[28px]"
+        aria-label={`${photo.title || "Fotografia"}${caption ? ` — ${caption}` : ""}, ${formatPrice(photo.price_cents)}`}
       >
-        <div className={`relative w-full ${loaded ? "" : "skeleton"}`} style={{ aspectRatio: ratio }}>
-          <motion.img
-            layoutId={`photo-${photo.id}`}
+        <div className={`relative aspect-[4/5] w-full overflow-hidden ${loaded ? "" : "skeleton"}`}>
+          <img
+            ref={imgRef}
             src={thumbUrl(photo.id, photo.version)}
             alt={photo.title || "Fotografia esportiva"}
             loading="lazy"
@@ -281,17 +284,26 @@ function PhotoCard({ photo, index, onOpen }: { photo: PublicPhoto; index: number
             draggable={false}
             onLoad={() => setLoaded(true)}
             onContextMenu={(e) => e.preventDefault()}
-            className={`protected-img absolute inset-0 h-full w-full object-cover transition-[transform,opacity] duration-700 [transition-timing-function:var(--ease-apple)] group-hover:scale-[1.045] ${loaded ? "opacity-100" : "opacity-0"}`}
+            className={`protected-img absolute inset-0 h-full w-full object-cover transition-[transform,opacity] duration-[900ms] [transition-timing-function:var(--ease-apple)] group-hover:scale-[1.05] ${loaded ? "opacity-100" : "opacity-0"}`}
           />
-        </div>
-        <span className="glass absolute right-2.5 top-2.5 rounded-full px-2.5 py-1 text-[12px] font-semibold tracking-tight sm:right-3 sm:top-3 sm:px-3 sm:text-[13px]">
-          {formatPrice(photo.price_cents)}
-        </span>
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent p-3 pt-12 sm:p-4 sm:pt-14">
-          <p className="truncate text-[13px] font-medium sm:text-sm">{photo.title || "Sem título"}</p>
-          <p className="mt-0.5 truncate text-[11px] text-white/65 sm:text-xs">
-            {[photo.event_name, photo.modality_name, formatDate(photo.event_date)].filter(Boolean).join(" · ")}
-          </p>
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(8,9,13,0)_55%,rgba(8,9,13,0.85)_100%)]" />
+          <span className="glass absolute right-2.5 top-2.5 rounded-full px-2.5 py-1 text-[12px] font-semibold tracking-tight sm:right-3.5 sm:top-3.5 sm:px-3 sm:text-[13px]">
+            {formatPrice(photo.price_cents)}
+          </span>
+          <span className="absolute inset-x-2.5 bottom-2.5 sm:inset-x-4 sm:bottom-4">
+            <span className="block truncate text-[14px] font-semibold leading-tight tracking-[-0.01em] sm:text-[17px]">
+              {photo.title || "Fotografia esportiva"}
+            </span>
+            {caption && (
+              <span className="mt-1 block truncate text-[11.5px] text-white/70 sm:text-[13px]">{caption}</span>
+            )}
+          </span>
+          <span
+            aria-hidden
+            className="absolute bottom-4 right-4 hidden size-10 items-center justify-center rounded-full bg-white text-ink opacity-0 shadow-lg transition-all duration-500 [transition-timing-function:var(--ease-apple)] group-hover:opacity-100 md:flex"
+          >
+            <IconArrowRight className="size-4" />
+          </span>
         </div>
       </motion.button>
     </motion.li>

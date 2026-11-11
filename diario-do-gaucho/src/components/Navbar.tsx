@@ -19,20 +19,20 @@ export function Navbar() {
       <nav
         aria-label="Principal"
         className={`glass pointer-events-auto flex w-full max-w-5xl items-center justify-between rounded-full pl-3 pr-2 transition-all duration-500 [transition-timing-function:var(--ease-apple)] ${
-          compact ? "h-14 bg-[rgba(14,16,22,0.72)]" : "h-16"
+          compact ? "h-14 bg-[rgba(12,14,20,0.82)]" : "h-16 bg-[rgba(12,14,20,0.55)]"
         }`}
       >
         <Link href="/" className="rounded-full px-2 py-1" aria-label="Diário do Gaúcho — início">
           <Logo />
         </Link>
         <div className="flex items-center gap-1">
-          <Link href="/#galeria" className="hidden rounded-full px-4 py-2 text-sm text-white/75 transition hover:text-white sm:block">
+          <Link href="/#galeria" className="hidden rounded-full px-4 py-2 text-sm text-white/75 transition hover:text-white md:block">
             Galeria
           </Link>
-          <Link href="/recuperar" className="hidden rounded-full px-4 py-2 text-sm text-white/75 transition hover:text-white sm:block">
+          <Link href="/recuperar" className="hidden rounded-full px-4 py-2 text-sm text-white/75 transition hover:text-white md:block">
             Minhas compras
           </Link>
-          <Link href="/#galeria" className="btn btn-primary btn-sm">
+          <Link href="/#galeria" className="btn btn-primary btn-sm px-4">
             Explorar
           </Link>
         </div>
