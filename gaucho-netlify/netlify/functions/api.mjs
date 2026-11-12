@@ -326,6 +326,34 @@ async function handle(req, context) {
   const m = req.method;
   const ip = context?.ip || req.headers.get("x-nf-client-connection-ip") || "unknown";
 
+  // ---------- diagnóstico: testa cada peça e mostra qual falhou (sem expor segredos)
+  if (path === "health" && m === "GET") {
+    const checks = {};
+    const run = async (name, fn) => {
+      try {
+        await fn();
+        checks[name] = "ok";
+      } catch (e) {
+        checks[name] = `FALHOU: ${e?.name || "Erro"}: ${String(e?.message || e).slice(0, 220)}`;
+      }
+    };
+    await run("armazenamento (Netlify Blobs)", async () => {
+      await db().set("health/ping", String(Date.now()));
+      if (!(await db().get("health/ping"))) throw new Error("não leu o que gravou");
+    });
+    await run("configuração", () => getConfig());
+    await run("QR Code", () => QRCode.toString("teste", { type: "svg" }));
+    await run("Pix (BR Code)", async () => buildPix({ key: normalizeKey(PIX_KEY()), name: PIX_NAME(), city: PIX_CITY(), amountCents: 900, txid: "TESTE" }));
+    await run("marca d'água (fonte)", async () => (await import("../lib/watermark.mjs")).watermarkSvg(400, 300));
+    await run("imagens (sharp)", async () => {
+      const { default: sharp } = await import("sharp");
+      await sharp({ create: { width: 8, height: 8, channels: 3, background: "#fff" } }).webp().toBuffer();
+    });
+    await run("fotos de exemplo", async () => (await import("../lib/seed-data.mjs")).SEED.length);
+    const ok = Object.values(checks).every((v) => v === "ok");
+    return json({ ok, node: process.version, senhaPorVariavel: Boolean(process.env.ADMIN_PASSWORD), checks }, ok ? 200 : 500);
+  }
+
   // ---------- público
   if (path === "photos" && m === "GET") {
     const photos = (await allPhotos()).filter((p) => !p.hidden).map(publicPhoto);
@@ -524,6 +552,6 @@ export default async (req, context) => {
   } catch (e) {
     if (e instanceof HttpError) return json({ error: e.message }, e.status);
     console.error("[api]", e);
-    return json({ error: "Erro inesperado. Tente novamente." }, 500);
+    return json({ error: "Erro inesperado. Tente novamente.", detail: `${e?.name || "Erro"}: ${String(e?.message || e).slice(0, 200)}` }, 500);
   }
 };

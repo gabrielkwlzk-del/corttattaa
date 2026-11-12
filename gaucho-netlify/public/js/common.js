@@ -33,7 +33,7 @@ export async function api(url, { json, ...opts } = {}) {
     cache: "no-store",
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new ApiError(data.error || `Erro ${res.status}`, res.status);
+  if (!res.ok) throw new ApiError(data.detail ? `${data.error} (${data.detail})` : data.error || `Erro ${res.status}`, res.status);
   return data;
 }
 
@@ -82,7 +82,7 @@ export const LOGO = `<a class="logo" href="/" aria-label="Esporte Show Online �
 export function mountChrome() {
   const nav = document.createElement("header");
   nav.className = "nav";
-  nav.innerHTML = `<nav class="nav-in glass" aria-label="Principal">${LOGO}<div class="nav-links"><a href="/#galeria" class="hide-sm">Galeria</a><a href="/recuperar" class="hide-sm">Minhas compras</a><a href="/#galeria" class="btn btn-primary btn-sm">Explorar</a></div></nav>`;
+  nav.innerHTML = `<nav class="nav-in glass" aria-label="Principal">${LOGO}<div class="nav-links"><a href="/#galeria" class="hide-sm">Galeria</a><a href="/recuperar" class="hide-sm">Minhas compras</a><button class="btn btn-glass btn-sm nav-lock" data-admin-open type="button" aria-label="Área do administrador">${icons.lock.replace('width="20" height="20"', 'width="16" height="16"')}<span class="nav-lock-t">Painel</span></button><a href="/#galeria" class="btn btn-primary btn-sm">Explorar</a></div></nav>`;
   document.body.prepend(nav);
   const on = () => nav.classList.toggle("scrolled", scrollY > 40);
   addEventListener("scroll", on, { passive: true });
@@ -90,7 +90,7 @@ export function mountChrome() {
 }
 
 export function footer() {
-  return `<footer class="foot"><div class="wrap foot-in"><div>${LOGO}<p>Fotografia esportiva com cuidado editorial. Prévias protegidas por marca d'água; o arquivo original em alta resolução é liberado somente após a confirmação do pagamento.</p></div><div class="foot-links"><div><b>Navegar</b><a href="/#galeria">Galeria</a><a href="/recuperar">Recuperar compra</a></div><div><b>Pagamento</b><span>Pix · BRL</span><span>Liberação segura</span></div></div></div><div class="wrap copy">© ${new Date().getFullYear()} Esporte Show Online. Todos os direitos reservados.</div></footer>`;
+  return `<footer class="foot"><div class="wrap foot-in"><div>${LOGO}<p>Fotografia esportiva com cuidado editorial. Prévias protegidas por marca d'água; o arquivo original em alta resolução é liberado somente após a confirmação do pagamento.</p></div><div class="foot-links"><div><b>Navegar</b><a href="/#galeria">Galeria</a><a href="/recuperar">Recuperar compra</a></div><div><b>Pagamento</b><span>Pix · BRL</span><span>Liberação segura</span></div></div></div><div class="wrap copy">© ${new Date().getFullYear()} Esporte Show Online. Todos os direitos reservados. · <button class="linkbtn" data-admin-open type="button">Área do administrador</button></div></footer>`;
 }
 
 export function reveal(root = document) {
@@ -107,3 +107,65 @@ export function reveal(root = document) {
   $$(".reveal:not(.in)", root).forEach((el) => io.observe(el));
   return io;
 }
+
+// ----------------------------------------------- entrada do painel pelo site ----
+let isAdminCached = false;
+let admModal;
+
+function openAdminLogin() {
+  if (!admModal) {
+    admModal = document.createElement("div");
+    admModal.className = "modal";
+    admModal.innerHTML = `<button class="modal-bg" type="button" tabindex="-1" aria-label="Fechar"></button>
+      <form class="sheet mini glass-strong" role="dialog" aria-modal="true" aria-labelledby="admT" novalidate>
+        <div class="mini-ic">${icons.lock}</div>
+        <h2 id="admT">Área do administrador</h2>
+        <p class="muted">Digite a senha para entrar no painel.</p>
+        <div><label class="label" for="admPw">Senha</label><input class="field" id="admPw" type="password" autocomplete="current-password" required></div>
+        <p class="err hidden" id="admErr" role="alert"></p>
+        <button class="btn btn-primary btn-block" id="admGo">Entrar</button>
+        <button class="btn btn-glass btn-block" type="button" id="admX">Cancelar</button>
+      </form>`;
+    document.body.appendChild(admModal);
+    const close = () => admModal.classList.remove("open");
+    $(".modal-bg", admModal).addEventListener("click", close);
+    $("#admX", admModal).addEventListener("click", close);
+    addEventListener("keydown", (e) => e.key === "Escape" && close());
+    $("form", admModal).addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const btn = $("#admGo", admModal);
+      const err = $("#admErr", admModal);
+      err.classList.add("hidden");
+      btn.disabled = true;
+      btn.textContent = "Entrando…";
+      try {
+        await api("/api/admin/login", { method: "POST", json: { password: $("#admPw", admModal).value } });
+        location.href = "/admin";
+      } catch (ex) {
+        err.textContent = ex.message;
+        err.classList.remove("hidden");
+        btn.disabled = false;
+        btn.textContent = "Entrar";
+        $("#admPw", admModal).value = "";
+        $("#admPw", admModal).focus();
+      }
+    });
+  }
+  admModal.classList.add("open");
+  setTimeout(() => $("#admPw", admModal).focus(), 50);
+}
+
+document.addEventListener("click", (e) => {
+  if (!e.target.closest("[data-admin-open]")) return;
+  e.preventDefault();
+  // Já logado? Vai direto ao painel. Senão, pede a senha aqui mesmo, sem sair do site.
+  isAdminCached ? (location.href = "/admin") : openAdminLogin();
+});
+
+// Se já houver sessão de administrador, o botão do menu vira um atalho direto.
+fetch("/api/admin/me", { cache: "no-store" })
+  .then((r) => r.json())
+  .then((r) => {
+    isAdminCached = Boolean(r.admin);
+  })
+  .catch(() => {});

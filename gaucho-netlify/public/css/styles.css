@@ -316,3 +316,14 @@ select.field option { background: #151821; }
 .kv { display: grid; gap: 12px; font-size: .875rem; } .kv div { display: flex; justify-content: space-between; gap: 16px; } .kv dt { color: var(--ti); } .kv dd { margin: 0; text-align: right; word-break: break-all; }
 
 @media (min-width: 1024px) { .lo-mobile { display: none !important; } }
+
+/* acesso ao painel pelo site */
+.nav-lock { gap: 6px; }
+.nav-lock-t { display: none; }
+@media (min-width: 640px) { .nav-lock-t { display: inline; } }
+.linkbtn { padding: 0; border: 0; background: none; color: var(--ti); font-size: inherit; text-decoration: underline; text-underline-offset: 3px; }
+.linkbtn:hover { color: #fff; }
+.sheet.mini { display: grid; align-content: start; width: min(400px, 100%); padding: 28px; gap: 16px; border-radius: 32px 32px 0 0; }
+@media (min-width: 640px) { .sheet.mini { border-radius: 32px; } }
+.sheet.mini h2 { font-size: 1.4rem; font-weight: 600; letter-spacing: -.03em; line-height: 1.1; }
+.mini-ic { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 16px; background: rgba(255,255,255,.07); color: var(--sky); }
