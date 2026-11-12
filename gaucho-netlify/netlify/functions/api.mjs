@@ -97,43 +97,18 @@ async function rateLimit(key, limit, windowMs) {
 }
 
 // ------------------------------------------------------------------- photos --
-async function ensureSeed() {
-  const cfg = await getConfig();
-  if (cfg.seeded) return;
-  const { SEED } = await import("../lib/seed-data.mjs");
-  const base = Date.UTC(2026, 10, 1);
-  await Promise.all(
-    SEED.map(async (s, i) => {
-      if (await getJSON(`photo/${s.id}`)) return;
-      await setJSON(`photo/${s.id}`, {
-        id: s.id,
-        seed: true,
-        title: s.title,
-        description: "",
-        modalidade: s.modalidade,
-        evento: "",
-        priceCents: cfg.defaultPriceCents,
-        width: s.width,
-        height: s.height,
-        format: s.format,
-        hidden: false,
-        deleted: false,
-        v: 1,
-        createdAt: new Date(base + (SEED.length - i) * 1000).toISOString(),
-      });
-    }),
-  );
-  await saveConfig({ seeded: true });
+// Limpeza única: remove do armazenamento as fotos de exemplo que versões antigas do site criaram.
+async function purgeSamples(list) {
+  const samples = list.filter((p) => p.seed || String(p.id).startsWith("seed-"));
+  for (const p of samples) await del(`photo/${p.id}`);
+  return list.filter((p) => !samples.includes(p));
 }
 
-const urls = (p) =>
-  p.seed
-    ? { thumbUrl: `/p/${p.id}-t.webp`, previewUrl: `/p/${p.id}.webp`, heroUrl: `/p/${p.id}-h.webp` }
-    : {
-        thumbUrl: `/api/preview/${p.id}/thumb?v=${p.v ?? 1}`,
-        previewUrl: `/api/preview/${p.id}/preview?v=${p.v ?? 1}`,
-        heroUrl: `/api/preview/${p.id}/hero?v=${p.v ?? 1}`,
-      };
+const urls = (p) => ({
+  thumbUrl: `/api/preview/${p.id}/thumb?v=${p.v ?? 1}`,
+  previewUrl: `/api/preview/${p.id}/preview?v=${p.v ?? 1}`,
+  heroUrl: `/api/preview/${p.id}/hero?v=${p.v ?? 1}`,
+});
 
 const publicPhoto = (p) => ({
   id: p.id,
@@ -147,20 +122,14 @@ const publicPhoto = (p) => ({
   ...urls(p),
 });
 
-const adminPhoto = (p) => ({ ...publicPhoto(p), hidden: Boolean(p.hidden), seed: Boolean(p.seed), createdAt: p.createdAt });
+const adminPhoto = (p) => ({ ...publicPhoto(p), hidden: Boolean(p.hidden), createdAt: p.createdAt });
 
 async function allPhotos() {
-  await ensureSeed();
-  const list = await listJSON("photo/");
+  const list = await purgeSamples(await listJSON("photo/"));
   return list.filter((p) => !p.deleted).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
 }
 
 async function readOriginal(p) {
-  if (p.seed) {
-    const { SEED } = await import("../lib/seed-data.mjs");
-    const s = SEED.find((x) => x.id === p.id);
-    return s ? Buffer.from(s.b64, "base64") : null;
-  }
   const data = await db().get(`file/orig/${p.id}`, { type: "arrayBuffer" });
   return data ? Buffer.from(data) : null;
 }
@@ -194,7 +163,6 @@ async function uploadPhoto(req) {
   ]);
   const photo = {
     id,
-    seed: false,
     title: title.slice(0, 160),
     description: "",
     modalidade: String(form.get("modalidade") || "").trim().slice(0, 60),
@@ -225,11 +193,10 @@ async function createOrder(req, ip) {
   if (!EMAIL.test(email)) throw new HttpError(400, "Informe um e-mail válido.");
   const name = String(body.name ?? "").trim().slice(0, 120);
 
-  await ensureSeed();
   const items = [];
   for (const id of ids) {
     const p = await getJSON(`photo/${id}`);
-    if (!p || p.deleted || p.hidden) throw new HttpError(409, "Alguma fotografia não está mais disponível.");
+    if (!p || p.seed || p.deleted || p.hidden) throw new HttpError(409, "Alguma fotografia não está mais disponível.");
     // O preço vem SEMPRE do servidor; qualquer valor enviado pelo navegador é ignorado.
     items.push({ photoId: p.id, title: p.title, priceCents: p.priceCents, downloads: 0 });
   }
@@ -349,7 +316,6 @@ async function handle(req, context) {
       const { default: sharp } = await import("sharp");
       await sharp({ create: { width: 8, height: 8, channels: 3, background: "#fff" } }).webp().toBuffer();
     });
-    await run("fotos de exemplo", async () => (await import("../lib/seed-data.mjs")).SEED.length);
     const ok = Object.values(checks).every((v) => v === "ok");
     return json({ ok, node: process.version, senhaPorVariavel: Boolean(process.env.ADMIN_PASSWORD), checks }, ok ? 200 : 500);
   }
@@ -367,7 +333,7 @@ async function handle(req, context) {
     const [, id, variant] = parts;
     const p = await getJSON(`photo/${id}`);
     const admin = await isAdmin(req);
-    if (!p || p.seed || p.deleted || (p.hidden && !admin)) return json({ error: "Não encontrado." }, 404);
+    if (!p || p.deleted || (p.hidden && !admin)) return json({ error: "Não encontrado." }, 404);
     const kind = variant === "thumb" ? "thumb" : variant === "hero" ? "hero" : "prev";
     let data = await db().get(`file/${kind}/${id}`, { type: "arrayBuffer" });
     // Fotos antigas sem versão de fundo: usa a miniatura (que já tem marca d'água).
@@ -475,7 +441,7 @@ async function handle(req, context) {
         // Se já foi vendida, apenas arquiva (o comprador mantém o acesso ao original).
         const orders = await listJSON("order/");
         const used = orders.some((o) => o.items.some((i) => i.photoId === p.id));
-        if (used || p.seed) {
+        if (used) {
           p.deleted = true;
           p.hidden = true;
           await setJSON(`photo/${p.id}`, p);

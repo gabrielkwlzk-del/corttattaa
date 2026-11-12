@@ -40,7 +40,6 @@ const TYPES = {
 
 const rewrite = (p) => {
   if (p === "/admin") return "/admin.html";
-  if (p === "/recuperar") return "/recuperar.html";
   if (p.startsWith("/pedido/")) return "/pedido.html";
   return p === "/" ? "/index.html" : p;
 };

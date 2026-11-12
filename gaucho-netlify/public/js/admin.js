@@ -236,7 +236,7 @@ function photoDrawer(p, all) {
   const panel = openDrawer(`<form id="pf" style="display:flex;flex-direction:column;gap:14px;min-height:100%">
     <div style="display:flex;justify-content:space-between;align-items:center"><h2 style="font-size:1.2rem;font-weight:600">Editar fotografia</h2><button class="btn btn-glass x" id="dx" type="button" aria-label="Fechar">${icons.close}</button></div>
     <img src="${p.thumbUrl}" alt="" style="width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:20px">
-    <p class="muted" style="font-size:.75rem">${p.width && p.height ? `${p.width}×${p.height}px` : ""} · ${p.seed ? "foto de exemplo" : "enviada por você"}</p>
+    <p class="muted" style="font-size:.75rem">${p.width && p.height ? `${p.width}×${p.height}px` : ""}</p>
     <div><label class="label" for="e-t">Nome</label><input class="field" id="e-t" value="${esc(p.title)}" maxlength="160"></div>
     <div><label class="label" for="e-d">Descrição</label><textarea class="field" id="e-d" maxlength="2000">${esc(p.description)}</textarea></div>
     <div class="cols2"><div><label class="label" for="e-p">Preço (R$)</label><input class="field" id="e-p" inputmode="decimal" value="${centsToInput(p.priceCents)}"></div>

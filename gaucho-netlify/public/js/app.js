@@ -18,7 +18,7 @@ function initHero(photos) {
   const bg = $("#heroBg");
   const strip = $("#strip");
   const show = photos.slice(0, 5);
-  if (!show.length) return;
+  if (!show.length) return strip.remove(); // sem fotos: fica só o fundo com brilho suave
   // Fundo decorativo borrado e sem texto; as fotos nítidas (com marca d'água) ficam só na galeria.
   bg.innerHTML = show.map((p, i) => `<img src="${p.heroUrl}" alt="" draggable="false" ${i === 0 ? 'fetchpriority="high"' : ""}>`).join("");
   const imgs = $$("img", bg);

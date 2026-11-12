@@ -11,18 +11,15 @@ let cookie = "";
 const call = (path, opts = {}) =>
   fetch(BASE + path, { ...opts, headers: { origin: BASE, cookie, ...(opts.headers || {}) }, redirect: "manual" });
 
-// 1. catálogo público
+// 1. catálogo público (o site começa vazio: só aparecem fotos enviadas pelo painel)
 let r = await j(await call("/api/photos"));
 assert.equal(r.s, 200);
-assert.ok(r.b.photos.length >= 8, "8 fotos de semente");
-assert.ok(r.b.photos.every((p) => p.priceCents === 900), "preço padrão R$ 9,00");
-assert.ok(!JSON.stringify(r.b).includes("b64") && !JSON.stringify(r.b).includes("orig"), "sem dados de original");
-ok(`catálogo: ${r.b.photos.length} fotos a R$ 9,00`);
-const seed = r.b.photos[0];
-const prev = await call(seed.previewUrl);
-assert.equal(prev.status, 200);
-assert.equal(prev.headers.get("content-type"), "image/webp");
-ok("prévia pública com marca d'água é servida");
+assert.ok(Array.isArray(r.b.photos));
+assert.ok(!r.b.photos.some((p) => String(p.id).startsWith("seed-")), "sem fotos de exemplo");
+assert.ok(!JSON.stringify(r.b).includes("b64"), "sem dados de original");
+ok(`catálogo público: ${r.b.photos.length} fotos (sem exemplos)`);
+assert.equal((await call("/recuperar")).status, 404, "aba de recuperar removida");
+ok("página de recuperar compra removida");
 
 // 2. painel exige senha
 assert.equal((await call("/api/admin/photos")).status, 401);
@@ -74,8 +71,7 @@ const heroBuf = Buffer.from(await heroRes.arrayBuffer());
 const hm = await sharp(heroBuf).metadata();
 assert.equal(hm.format, "webp");
 assert.ok(Math.max(hm.width, hm.height) <= 1200 && !heroBuf.equals(upPrev), "fundo do topo é uma versão reduzida e borrada");
-assert.equal((await call(seed.heroUrl)).status, 200);
-ok("fundo borrado (sem texto) gerado para fotos novas e de exemplo");
+ok("fundo borrado (sem texto) gerado para fotos novas");
 
 // 5. compra: preço vem do servidor
 const guest = (path, opts = {}) => fetch(BASE + path, { ...opts, headers: { origin: BASE, ...(opts.headers || {}) } });
@@ -119,18 +115,7 @@ const got = Buffer.from(await dl.arrayBuffer());
 assert.ok(got.equals(jpg), "o arquivo baixado é o original, byte a byte");
 ok("download do ORIGINAL por link assinado (byte a byte igual ao enviado)");
 
-// 8. foto de semente também baixa o original
-r = await j(await guest("/api/orders", { method: "POST", body: JSON.stringify({ photoIds: [seed.id], email: "outro@exemplo.com" }) }));
-const t2 = r.b.token;
-const o2 = (await (await call("/api/admin/orders")).json()).orders.find((o) => o.code === r.b.code);
-await call(`/api/admin/orders/${o2.id}/confirm`, { method: "POST" });
-const l2 = await (await guest(`/api/orders/${t2}/download/${seed.id}`, { method: "POST" })).json();
-const f2 = Buffer.from(await (await guest(l2.url)).arrayBuffer());
-assert.ok(f2.length > 100_000);
-assert.notEqual(f2.length, Buffer.from(await (await guest(seed.previewUrl)).arrayBuffer()).length);
-ok("foto de semente: original em alta resolução entregue após o pagamento");
-
-// 9. painel: editar, ocultar, excluir
+// 8. painel: editar, ocultar, excluir
 r = await j(await call(`/api/admin/photos/${up.id}`, { method: "PATCH", body: JSON.stringify({ price: "20,00", hidden: true }) }));
 assert.equal(r.b.photo.priceCents, 2000);
 r = await j(await call("/api/photos"));

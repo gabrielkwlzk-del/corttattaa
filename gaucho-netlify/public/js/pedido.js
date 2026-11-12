@@ -132,7 +132,7 @@ async function load() {
     if (o.status !== "pending") clearInterval(timer);
   } catch (e) {
     clearInterval(timer);
-    app.innerHTML = `<div class="glass card" style="max-width:520px;margin:0 auto;text-align:center;padding:40px"><h1 style="font-size:1.6rem;font-weight:600">Pedido não encontrado</h1><p class="muted" style="margin-top:12px">${esc(e.message)}</p><a class="btn btn-primary" href="/recuperar" style="margin-top:28px">Recuperar compra</a></div>`;
+    app.innerHTML = `<div class="glass card" style="max-width:520px;margin:0 auto;text-align:center;padding:40px"><h1 style="font-size:1.6rem;font-weight:600">Pedido não encontrado</h1><p class="muted" style="margin-top:12px">${esc(e.message)}</p><a class="btn btn-primary" href="/#galeria" style="margin-top:28px">Voltar à galeria</a></div>`;
   }
 }
 

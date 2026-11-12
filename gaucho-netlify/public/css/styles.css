@@ -94,8 +94,8 @@ select.field option { background: #151821; }
 .hero::after { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .07; mix-blend-mode: overlay; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
 .hero-aurora { position: absolute; inset: 0; z-index: -1; overflow: hidden; }
 .hero-aurora::before, .hero-aurora::after { content: ""; position: absolute; width: 80vw; height: 80vh; border-radius: 50%; filter: blur(70px); animation: aurora 18s var(--ease) infinite; }
-.hero-aurora::before { left: -25%; top: -30%; background: radial-gradient(closest-side,rgba(120,169,255,.32),transparent); }
-.hero-aurora::after { right: -20%; bottom: -30%; background: radial-gradient(closest-side,rgba(163,168,178,.2),transparent); animation-delay: -9s; }
+.hero-aurora::before { left: -25%; top: -30%; background: radial-gradient(closest-side,rgba(120,169,255,.45),transparent); }
+.hero-aurora::after { right: -20%; bottom: -30%; background: radial-gradient(closest-side,rgba(120,169,255,.22),transparent); animation-delay: -9s; }
 @keyframes aurora { 50% { transform: translate3d(4%,-3%,0) scale(1.08); } }
 .hero-grid { display: grid; gap: 40px; align-items: end; padding: 140px 0 72px; }
 @media (min-width: 1024px) { .hero-grid { grid-template-columns: 1fr auto; padding-bottom: 96px; } }
@@ -183,7 +183,7 @@ select.field option { background: #151821; }
 .side-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .err { color: var(--bad); font-size: .875rem; }
 
-/* páginas internas (pedido, recuperar) */
+/* páginas internas (pedido) */
 .page { width: min(1000px, 100% - 32px); margin: 0 auto; padding: 112px 0 40px; }
 .pay-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; }
 @media (min-width: 900px) { .pay-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); } }

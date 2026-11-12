@@ -82,7 +82,7 @@ export const LOGO = `<a class="logo" href="/" aria-label="Esporte Show Online �
 export function mountChrome() {
   const nav = document.createElement("header");
   nav.className = "nav";
-  nav.innerHTML = `<nav class="nav-in glass" aria-label="Principal">${LOGO}<div class="nav-links"><a href="/#galeria" class="hide-sm">Galeria</a><a href="/recuperar" class="hide-sm">Minhas compras</a><button class="btn btn-glass btn-sm nav-lock" data-admin-open type="button" aria-label="Área do administrador">${icons.lock.replace('width="20" height="20"', 'width="16" height="16"')}<span class="nav-lock-t">Painel</span></button><a href="/#galeria" class="btn btn-primary btn-sm">Explorar</a></div></nav>`;
+  nav.innerHTML = `<nav class="nav-in glass" aria-label="Principal">${LOGO}<div class="nav-links"><a href="/#galeria" class="hide-sm">Galeria</a><button class="btn btn-glass btn-sm nav-lock" data-admin-open type="button" aria-label="Área do administrador">${icons.lock.replace('width="20" height="20"', 'width="16" height="16"')}<span class="nav-lock-t">Painel</span></button><a href="/#galeria" class="btn btn-primary btn-sm">Explorar</a></div></nav>`;
   document.body.prepend(nav);
   const on = () => nav.classList.toggle("scrolled", scrollY > 40);
   addEventListener("scroll", on, { passive: true });
@@ -90,7 +90,7 @@ export function mountChrome() {
 }
 
 export function footer() {
-  return `<footer class="foot"><div class="wrap foot-in"><div>${LOGO}<p>Fotografia esportiva com cuidado editorial. Prévias protegidas por marca d'água; o arquivo original em alta resolução é liberado somente após a confirmação do pagamento.</p></div><div class="foot-links"><div><b>Navegar</b><a href="/#galeria">Galeria</a><a href="/recuperar">Recuperar compra</a></div><div><b>Pagamento</b><span>Pix · BRL</span><span>Liberação segura</span></div></div></div><div class="wrap copy">© ${new Date().getFullYear()} Esporte Show Online. Todos os direitos reservados. · <button class="linkbtn" data-admin-open type="button">Área do administrador</button></div></footer>`;
+  return `<footer class="foot"><div class="wrap foot-in"><div>${LOGO}<p>Fotografia esportiva com cuidado editorial. Prévias protegidas por marca d'água; o arquivo original em alta resolução é liberado somente após a confirmação do pagamento.</p></div><div class="foot-links"><div><b>Navegar</b><a href="/#galeria">Galeria</a></div><div><b>Pagamento</b><span>Pix · BRL</span><span>Liberação segura</span></div></div></div><div class="wrap copy">© ${new Date().getFullYear()} Esporte Show Online. Todos os direitos reservados. · <button class="linkbtn" data-admin-open type="button">Área do administrador</button></div></footer>`;
 }
 
 export function reveal(root = document) {

@@ -7,7 +7,7 @@ os dados. **Não precisa de banco de dados nem de outro serviço.**
 ## O que tem
 
 - **Site:** hero cinematográfico, galeria com busca e filtro por modalidade, foto ampliada,
-  compra com Pix (QR Code e copia e cola), página do pedido que atualiza sozinha, recuperação de compra.
+  compra com Pix (QR Code e copia e cola) e página do pedido que atualiza sozinha.
 - **Pix direto para a conta do Gaúcho:** chave `47992145561` (celular). O dinheiro cai na conta, sem intermediário.
 - **Painel `/admin` com senha:** visão geral, pedidos (confirmar pagamento), fotografias (editar preço,
   nome, modalidade, ocultar, excluir), envio de várias fotos de uma vez e configurações.
@@ -55,11 +55,15 @@ tiver sido trocada pelo painel). O painel bloqueia por 15 minutos depois de 5 te
 
 ## Fotos
 
-- As 8 fotos de exemplo já vêm no site. Troque ou apague pelo painel em **Fotografias**.
-- Para enviar novas: **Painel → Enviar fotos**. Dá para arrastar dezenas de uma vez.
+O site começa **sem nenhuma foto**: só aparecem as fotos de clientes que você enviar.
+
+- Envie em **Painel → Enviar fotos**. Dá para arrastar dezenas de uma vez.
 - **Limite de 5 MB por foto**, por causa do limite das Netlify Functions. Fotos maiores são
-  otimizadas automaticamente no navegador antes do envio (a qualidade é preservada o máximo possível).
+  otimizadas automaticamente no navegador antes do envio.
+- Edite preço, nome e modalidade, oculte ou exclua em **Painel → Fotografias**.
 - Foto já vendida não é apagada, só arquivada, para o comprador não perder o acesso.
+- Se um site publicado antes ainda tiver as fotos de exemplo antigas, elas são apagadas
+  automaticamente na primeira visita depois deste deploy.
 
 ## Rodar no seu computador
 
@@ -75,10 +79,10 @@ Os dados locais ficam em `.local-data/` e não vão para o Git.
 ## Estrutura
 
 ```
-public/            site estático (index, pedido, recuperar, admin) + css/js/fontes + prévias das fotos de exemplo
+public/            site estático (index, pedido, admin) + css/js/fontes
 netlify/functions/api.mjs   toda a API (catálogo, pedidos, download assinado, painel)
 netlify/lib/       Pix (BR Code), senha, armazenamento, marca d'água, processamento de imagem
-tools/             servidor local, teste de fluxo, gerador das fotos de exemplo
+tools/             servidor local e teste de fluxo
 tests/             testes automáticos
 netlify.toml       configuração de build, rotas e cabeçalhos de segurança
 ```
@@ -89,7 +93,4 @@ Senha com hash scrypt; sessão em cookie `HttpOnly`, `Secure` e `SameSite=Strict
 proteção contra requisições de outra origem; o preço é sempre definido pelo servidor; "Já paguei"
 nunca libera arquivo; links de download assinados e com validade de 5 minutos; cabeçalhos CSP.
 
-## Aviso sobre as fotos de exemplo
-
-As 8 fotos de exemplo foram geradas por IA. Para vender de verdade, troque por fotos reais dos seus
-eventos, com autorização de uso de imagem dos atletas.
+Use apenas fotos reais, com autorização de uso de imagem dos atletas.
