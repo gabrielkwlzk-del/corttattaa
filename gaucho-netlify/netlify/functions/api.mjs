@@ -487,6 +487,62 @@ async function handle(req, context) {
       }
     }
 
+    // ---------- exportação dos dados (usada para migrar o site para a Vercel; só para o administrador)
+    if (path === "admin/export" && m === "GET") {
+      const part = url.searchParams.get("part") || "meta";
+      const all = (await listJSON("order/")).sort((x, y) => (x.createdAt < y.createdAt ? -1 : 1));
+      if (part === "orders") {
+        const offset = Math.max(0, Number(url.searchParams.get("offset") || 0));
+        const limit = Math.min(500, Math.max(1, Number(url.searchParams.get("limit") || 100)));
+        return json({
+          total: all.length,
+          orders: all.slice(offset, offset + limit).map((o) => ({
+            id: o.id,
+            code: o.code,
+            status: o.status,
+            amountCents: o.amountCents,
+            email: o.email,
+            name: o.name || "",
+            pix: o.pix,
+            createdAt: o.createdAt,
+            reportedAt: o.reportedAt,
+            paidAt: o.paidAt,
+            confirmedBy: o.confirmedBy || null,
+            items: o.items.map((i) => ({ photoId: i.photoId, title: i.title, priceCents: i.priceCents, downloads: i.downloads || 0 })),
+          })),
+        });
+      }
+      const cfg = await getConfig();
+      const photos = (await listJSON("photo/")).filter((p) => !String(p.id).startsWith("seed-"));
+      return json({
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        config: { defaultPriceCents: cfg.defaultPriceCents },
+        ordersTotal: all.length,
+        photos: photos.map((p) => ({
+          id: p.id,
+          title: p.title,
+          description: p.description || "",
+          modalidade: p.modalidade || "",
+          evento: p.evento || "",
+          priceCents: p.priceCents,
+          width: p.width,
+          height: p.height,
+          format: p.format,
+          hidden: Boolean(p.hidden),
+          deleted: Boolean(p.deleted),
+          createdAt: p.createdAt,
+          filename: null,
+        })),
+      });
+    }
+    if (path === "admin/export/file" && m === "GET") {
+      const p = await getJSON(`photo/${url.searchParams.get("id")}`);
+      const file = p ? await readOriginal(p) : null;
+      if (!file) throw new HttpError(404, "Arquivo não encontrado.");
+      return new Response(file, { headers: { "content-type": "application/octet-stream", "cache-control": "private, no-store" } });
+    }
+
     if (path === "admin/settings" && m === "GET") {
       const cfg = await getConfig();
       const key = normalizeKey(PIX_KEY());
