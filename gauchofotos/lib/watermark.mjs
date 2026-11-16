@@ -83,7 +83,7 @@ export function watermarkSvg(width, height) {
   const pillH = pillSize * 2.6;
   const pillW = pill.width + padX * 2;
   const margin = Math.max(10, short * 0.035);
-  const pillX = width - margin - pillW;
+  const pillX = (width - pillW) / 2; // centralizada: não some quando a miniatura é recortada
   const pillY = height - margin - pillH;
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">

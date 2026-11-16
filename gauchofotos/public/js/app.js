@@ -206,9 +206,9 @@ async function init() {
   try {
     const { photos } = await api("/api/photos");
     state.all = photos;
-  } catch {
+  } catch (e) {
     $("#grid").innerHTML = "";
-    $("#count").textContent = "Não foi possível carregar as fotografias. Atualize a página.";
+    $("#count").textContent = e.setup ? "Estamos finalizando a configuração do site. Volte em alguns minutos." : "Não foi possível carregar as fotografias. Atualize a página.";
     return;
   }
   const mods = new Set(state.all.map((p) => p.modalidade).filter(Boolean));

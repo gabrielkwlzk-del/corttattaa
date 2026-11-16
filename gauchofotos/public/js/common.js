@@ -19,9 +19,10 @@ export const dateTime = (iso) =>
     : "—";
 
 export class ApiError extends Error {
-  constructor(message, status) {
+  constructor(message, status, setup) {
     super(message);
     this.status = status;
+    this.setup = setup;
   }
 }
 
@@ -33,7 +34,7 @@ export async function api(url, { json, ...opts } = {}) {
     cache: "no-store",
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new ApiError(data.detail ? `${data.error} (${data.detail})` : data.error || `Erro ${res.status}`, res.status);
+  if (!res.ok) throw new ApiError(data.detail ? `${data.error} (${data.detail})` : data.error || `Erro ${res.status}`, res.status, data.setup);
   return data;
 }
 

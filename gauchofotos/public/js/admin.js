@@ -1,7 +1,6 @@
 import { $, $$, ApiError, api, centsToInput, dateTime, esc, icons, LOGO, price, toast } from "./common.js";
 
 const root = $("#root");
-const MAX = 5 * 1024 * 1024;
 const small = (svg) => svg.replace('width="20" height="20"', 'width="16" height="16"');
 
 // ============================================================== login ======
@@ -25,7 +24,7 @@ function showLogin() {
       await api("/api/admin/login", { method: "POST", json: { password: $("#pw").value } });
       showApp();
     } catch (ex) {
-      $("#le").textContent = ex.message;
+      $("#le").textContent = ex.setup ? `${ex.message} Abra /api/health para ver o que falta.` : ex.message;
       $("#le").classList.remove("hidden");
       $("#pw").value = "";
       b.disabled = false;
@@ -53,9 +52,22 @@ async function guard(fn) {
     return await fn();
   } catch (e) {
     if (e instanceof ApiError && e.status === 401) return showLogin();
+    if (e instanceof ApiError && e.setup) return showSetup(e.setup);
     toast(e.message || "Erro inesperado");
     throw e;
   }
+}
+
+function showSetup(kind) {
+  const what = kind === "database" ? "o banco de dados" : kind === "files" ? "o armazenamento de fotos" : "uma configuração";
+  const steps =
+    kind === "database"
+      ? "No painel da Vercel: abra o projeto → <b>Storage</b> → <b>Create Database</b> → <b>Neon</b> (grátis) → conecte ao projeto. Depois faça um novo deploy."
+      : kind === "files"
+        ? "No painel da Vercel: abra o projeto → <b>Storage</b> → <b>Create → Blob</b> (privado) → conecte ao projeto. Depois faça um novo deploy."
+        : "Abra <b>/api/health</b> neste site para ver o que falta.";
+  const main = $("#main") || root;
+  main.innerHTML = `<div class="glass card" style="max-width:640px;margin:40px auto"><p class="eyebrow">Falta um passo</p><h1 style="margin-top:8px;font-size:1.6rem">Conecte ${what}.</h1><p class="muted" style="margin-top:12px;line-height:1.6">${steps}</p><p class="muted" style="margin-top:12px;font-size:.875rem">Para conferir o que já está funcionando, abra <a href="/api/health" style="color:var(--sky)">/api/health</a>.</p></div>`;
 }
 
 async function logout() {
@@ -274,49 +286,42 @@ function photoDrawer(p, all) {
 const uploads = [];
 let running = false;
 
-async function shrink(file) {
-  // Netlify Functions aceitam ~6 MB por requisição: otimiza fotos maiores que 5 MB.
-  if (file.size <= MAX || !/^image\/(jpeg|png|webp)$/.test(file.type)) return file;
-  const bmp = await createImageBitmap(file, { imageOrientation: "from-image" });
-  let scale = 1;
-  for (let i = 0; i < 6; i++) {
-    const c = document.createElement("canvas");
-    c.width = Math.round(bmp.width * scale);
-    c.height = Math.round(bmp.height * scale);
-    c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
-    for (const q of [0.92, 0.85, 0.78, 0.7]) {
-      const blob = await new Promise((r) => c.toBlob(r, "image/jpeg", q));
-      if (blob && blob.size <= MAX * 0.95) return new File([blob], file.name.replace(/\.\w+$/, ".jpg"), { type: "image/jpeg" });
-    }
-    scale *= 0.85;
-  }
-  return file;
-}
+let uploadMaxBytes = 40 * 1024 * 1024;
 
-function sendOne(file, fields, onProgress) {
-  return new Promise((resolve, reject) => {
-    const fd = new FormData();
-    fd.set("file", file);
-    Object.entries(fields).forEach(([k, v]) => fd.set(k, v));
-    const x = new XMLHttpRequest();
-    x.open("POST", "/api/admin/photos");
-    x.upload.onprogress = (e) => e.lengthComputable && onProgress(e.loaded / e.total);
-    x.onload = () => {
-      let data = {};
-      try {
-        data = JSON.parse(x.responseText);
-      } catch {}
-      x.status >= 200 && x.status < 300 ? resolve(data) : reject(new Error(x.status === 401 ? "Sessão expirada" : data.error || `Erro ${x.status}`));
-    };
-    x.onerror = () => reject(new Error("Falha de rede"));
-    x.send(fd);
-  });
+// Envia o ORIGINAL direto ao armazenamento (sem passar pela função do servidor, sem limite de 4 MB) e depois
+// pede ao servidor para gerar a prévia com marca d'água e registrar a foto.
+async function sendOne(file, fields, onProgress) {
+  const prep = await api("/api/admin/uploads/prepare", { method: "POST", json: { files: [{ name: file.name, size: file.size, type: file.type }] } });
+  const u = prep.uploads[0];
+  if (prep.mode === "local") {
+    await new Promise((resolve, reject) => {
+      const x = new XMLHttpRequest();
+      x.open("PUT", u.upload.url);
+      x.setRequestHeader("content-type", file.type || "application/octet-stream");
+      x.upload.onprogress = (e) => e.lengthComputable && onProgress(e.loaded / e.total);
+      x.onload = () => (x.status >= 200 && x.status < 300 ? resolve() : reject(new Error(x.status === 401 ? "Sessão expirada" : `Falha no envio (${x.status})`)));
+      x.onerror = () => reject(new Error("Falha de rede no envio"));
+      x.send(file);
+    });
+  } else {
+    const { upload } = await import("./vendor/blob-client.js");
+    await upload(u.pathname, file, {
+      access: "private",
+      handleUploadUrl: "/api/admin/blob-upload",
+      clientPayload: u.ticket,
+      contentType: file.type || undefined,
+      onUploadProgress: (e) => onProgress(e.percentage / 100),
+    });
+  }
+  onProgress(1);
+  return api("/api/admin/photos/finalize", { method: "POST", json: { ticket: u.ticket, filename: file.name, ...fields } });
 }
 
 async function viewUpload(main) {
   const [{ photos }, settings] = await Promise.all([api("/api/admin/photos"), api("/api/admin/settings")]);
   const mods = [...new Set(photos.map((x) => x.modalidade).filter(Boolean))];
   uploads.length = 0;
+  uploadMaxBytes = settings.maxUploadMb * 1024 * 1024;
   main.innerHTML = `${head("Enviar fotografias", "Acervo")}
     <div class="two">
       <section class="glass card"><h2 style="font-size:1.05rem;font-weight:600">Configurações do lote</h2><p class="muted" style="font-size:.875rem;margin-top:4px">Valem para todas as fotos enviadas agora. Dá para editar cada uma depois.</p>
@@ -325,7 +330,7 @@ async function viewUpload(main) {
           <div><label class="label" for="u-e">Evento <span class="muted">(opcional)</span></label><input class="field" id="u-e" maxlength="120"></div>
           <div><label class="label" for="u-p">Preço por foto (R$)</label><input class="field" id="u-p" inputmode="decimal" value="${centsToInput(settings.defaultPriceCents)}"></div>
           <button class="btn btn-sky btn-block" id="u-go" type="button" disabled>Selecione as fotos</button>
-          <p class="muted" style="font-size:.75rem">JPEG, PNG, WebP ou TIFF · até 5 MB por foto. Fotos maiores são otimizadas automaticamente antes do envio.</p>
+          <p class="muted" style="font-size:.75rem">JPEG, PNG, WebP ou TIFF · até ${settings.maxUploadMb} MB por foto. O original é guardado sem nenhuma alteração.</p>
         </div></section>
       <div style="display:grid;gap:20px;min-width:0">
         <div class="drop glass" id="drop"><div class="ic">${icons.upload}</div><b style="font-size:1.1rem;letter-spacing:-.02em">Arraste as fotografias aqui</b><p class="muted" style="font-size:.875rem;margin-top:4px">ou escolha no seu aparelho — dezenas de uma vez</p><button class="btn btn-glass" id="pick" type="button" style="margin-top:18px">Escolher arquivos</button><input class="sr-only" id="file" type="file" multiple accept="image/jpeg,image/png,image/webp,image/tiff"></div>
@@ -349,7 +354,11 @@ function addFiles(files) {
       uploads.push({ file: f, state: "bad", error: "Não é uma imagem", p: 0 });
       continue;
     }
-    uploads.push({ file: f, state: "queued", p: 0, preview: URL.createObjectURL(f) });
+    if (f.size > uploadMaxBytes) {
+      uploads.push({ file: f, state: "bad", error: `Maior que ${Math.round(uploadMaxBytes / 1048576)} MB`, p: 0 });
+      continue;
+    }
+    uploads.push({ file: f, state: "queued", p: 0, preview: f.size < 25 * 1024 * 1024 ? URL.createObjectURL(f) : undefined });
   }
   renderUploads();
 }
@@ -387,11 +396,10 @@ async function startUpload() {
       try {
         u.state = "busy";
         renderUploads();
-        const file = await shrink(u.file);
-        await sendOne(file, fields, (p) => ((u.p = p), p >= 1 && (u.state = "proc"), renderUploads()));
+        await sendOne(u.file, fields, (p) => ((u.p = p), p >= 1 && (u.state = "proc"), renderUploads()));
         u.state = "ok";
       } catch (e) {
-        if (e.message === "Sessão expirada") return showLogin();
+        if (e.status === 401 || e.message === "Sessão expirada") return showLogin();
         u.state = "bad";
         u.error = e.message;
       }
@@ -408,18 +416,28 @@ async function startUpload() {
 async function viewSettings(main) {
   const s = await api("/api/admin/settings");
   main.innerHTML = `${head("Configurações", "Sistema")}
-    <div class="stats" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">
+    <div class="stats" style="grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr))">
       <section class="glass card"><h2 style="font-size:1.05rem;font-weight:600">Preço padrão</h2><p class="muted" style="font-size:.875rem;margin:4px 0 16px">Aplicado às próximas fotos enviadas. As fotos existentes mantêm o preço individual.</p>
         <form id="sp" class="row" style="flex-wrap:nowrap"><input class="field" id="sp-v" inputmode="decimal" value="${centsToInput(s.defaultPriceCents)}" aria-label="Preço padrão em reais"><button class="btn btn-primary" style="flex:none">Salvar</button></form></section>
       <section class="glass card"><h2 style="font-size:1.05rem;font-weight:600">Pix recebedor</h2><p class="muted" style="font-size:.875rem;margin:4px 0 16px">Os pagamentos caem direto na sua conta, sem intermediário.</p>
         <dl class="kv"><div><dt>Chave Pix</dt><dd>${esc(s.pix.key)}</dd></div><div><dt>Nome no QR</dt><dd>${esc(s.pix.name)}</dd></div><div><dt>Confirmação</dt><dd>Manual, pelo painel</dd></div></dl></section>
       <section class="glass card"><h2 style="font-size:1.05rem;font-weight:600">Alterar senha</h2><p class="muted" style="font-size:.875rem;margin:4px 0 16px">Ao trocar, todas as sessões são encerradas.</p>
         <form id="pw" class="form"><input class="field" type="password" id="pw-c" placeholder="Senha atual" autocomplete="current-password" aria-label="Senha atual"><input class="field" type="password" id="pw-n" placeholder="Nova senha (mín. 8 caracteres)" autocomplete="new-password" aria-label="Nova senha"><button class="btn btn-glass">Alterar senha</button><p class="err hidden" id="pw-e" role="alert"></p></form></section>
+      <section class="glass card"><h2 style="font-size:1.05rem;font-weight:600">Backup dos dados</h2><p class="muted" style="font-size:.875rem;margin:4px 0 16px">Baixa um arquivo com todas as fotos (informações) e todos os pedidos. As imagens ficam guardadas com segurança no armazenamento do site.</p>
+        <button class="btn btn-glass" id="bk" type="button">${small(icons.download)} Baixar backup</button></section>
+      <section class="glass card" style="grid-column:1/-1"><h2 style="font-size:1.05rem;font-weight:600">Importar do site antigo (Netlify)</h2><p class="muted" style="font-size:.875rem;margin:4px 0 16px;max-width:680px">Traz as fotos, os pedidos e o preço padrão do site antigo. Os links dos pedidos dos clientes continuam funcionando neste endereço. É seguro repetir: nada é duplicado.</p>
+        <form id="im" class="form" style="max-width:520px"><div><label class="label" for="im-url">Endereço do site antigo</label><input class="field" id="im-url" placeholder="https://seusite.netlify.app" autocomplete="off" spellcheck="false"></div>
+          <div><label class="label" for="im-pw">Senha do painel do site antigo</label><input class="field" id="im-pw" type="password" autocomplete="off"></div>
+          <label class="check"><input type="checkbox" id="im-keep"> Usar essa senha também como senha deste painel</label>
+          <button class="btn btn-sky" id="im-go">Importar tudo</button></form>
+        <div id="im-box" class="hidden" style="margin-top:20px"><div class="progress"><i id="im-bar"></i></div><ul id="im-log" class="im-log"></ul></div></section>
     </div>`;
   $("#sp").addEventListener("submit", async (e) => {
     e.preventDefault();
     await guard(() => api("/api/admin/settings", { method: "PUT", json: { defaultPrice: $("#sp-v").value } })).then(() => toast("Preço padrão atualizado."));
   });
+  $("#bk").addEventListener("click", downloadBackup);
+  $("#im").addEventListener("submit", (e) => (e.preventDefault(), runImport()));
   $("#pw").addEventListener("submit", async (e) => {
     e.preventDefault();
     try {
@@ -431,6 +449,92 @@ async function viewSettings(main) {
       $("#pw-e").classList.remove("hidden");
     }
   });
+}
+
+// ---------------------------------------------------------------- backup ----
+async function downloadBackup() {
+  const b = $("#bk");
+  b.disabled = true;
+  try {
+    const meta = await api("/api/admin/export?part=meta");
+    const orders = [];
+    for (let off = 0; ; off += 200) {
+      const page = await api(`/api/admin/export?part=orders&offset=${off}&limit=200`);
+      orders.push(...page.orders);
+      if (orders.length >= page.total || !page.orders.length) break;
+    }
+    const blob = new Blob([JSON.stringify({ ...meta, orders }, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `backup-esporte-show-online-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    toast("Backup baixado.");
+  } catch (e) {
+    toast(e.message);
+  } finally {
+    b.disabled = false;
+  }
+}
+
+// ------------------------------------------------------------- importação ----
+async function runImport() {
+  const url = $("#im-url").value.trim();
+  const password = $("#im-pw").value;
+  const keep = $("#im-keep").checked;
+  const box = $("#im-box");
+  const log = $("#im-log");
+  const bar = $("#im-bar");
+  const go = $("#im-go");
+  const line = (t, cls = "") => {
+    log.insertAdjacentHTML("beforeend", `<li class="${cls}">${esc(t)}</li>`);
+    log.lastElementChild.scrollIntoView({ block: "nearest" });
+  };
+  box.classList.remove("hidden");
+  log.innerHTML = "";
+  bar.style.width = "0%";
+  go.disabled = true;
+  try {
+    line("Entrando no site antigo…");
+    const { cookie, meta } = await api("/api/admin/import/start", { method: "POST", json: { url, password } });
+    const photos = meta.photos.filter((p) => /^[0-9a-f-]{36}$/i.test(p.id));
+    const total = photos.length + Math.max(1, Math.ceil(meta.ordersTotal / 100)) + 1;
+    let done = 0;
+    const tick = () => (bar.style.width = `${Math.min(100, (++done / total) * 100)}%`);
+    line(`Encontrei ${photos.length} fotos e ${meta.ordersTotal} pedidos.`);
+    let okPhotos = 0;
+    const failed = [];
+    for (const p of photos) {
+      try {
+        const r = await api("/api/admin/import/photo", { method: "POST", json: { url, cookie, photo: p } });
+        if (r.skipped) failed.push(`${p.title || p.id}: ${r.skipped}`);
+        else okPhotos++;
+      } catch (e) {
+        failed.push(`${p.title || p.id}: ${e.message}`);
+      }
+      line(`Foto ${okPhotos + failed.length}/${photos.length}: ${p.title || "sem título"}`);
+      tick();
+    }
+    let orders = 0;
+    for (let off = 0; ; ) {
+      const r = await api("/api/admin/import/orders", { method: "POST", json: { url, cookie, offset: off } });
+      orders += r.imported;
+      tick();
+      if (r.next == null) break;
+      off = r.next;
+    }
+    line(`Pedidos importados: ${orders}.`);
+    await api("/api/admin/import/config", { method: "POST", json: { url, cookie, password, keepPassword: keep } });
+    tick();
+    bar.style.width = "100%";
+    line(`Pronto! ${okPhotos} fotos e ${orders} pedidos novos importados.${keep ? " A senha deste painel agora é a do site antigo." : ""}`, "ok");
+    failed.forEach((f) => line(`Atenção: ${f}`, "bad"));
+    toast("Importação concluída.");
+  } catch (e) {
+    line(e.message, "bad");
+  } finally {
+    go.disabled = false;
+  }
 }
 
 // ================================================================== início ===
