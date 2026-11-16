@@ -97,8 +97,35 @@ export async function importPhoto({ url, cookie, photo }) {
 
 const ORDER_STATUS = new Set(["pending", "paid", "cancelled"]);
 
-export async function importOrdersPage({ url, cookie, offset = 0 }) {
+/** Lista resumida de todos os pedidos do site antigo, para o administrador escolher o que trazer. */
+export async function importOrdersList({ url, cookie }) {
   const base = assertImportUrl(url);
+  const out = [];
+  for (let off = 0; off < 20_000; ) {
+    const res = await oldFetch(base, cookie, `/api/admin/export?part=orders&offset=${off}&limit=200`);
+    if (!res.ok) throw new HttpError(502, `Falha ao ler os pedidos do site antigo (${res.status}).`);
+    const data = await res.json();
+    for (const o of data.orders ?? []) {
+      out.push({
+        id: o.id,
+        code: o.code,
+        status: o.status,
+        amountCents: o.amountCents,
+        email: o.email,
+        createdAt: o.createdAt,
+        photoIds: (o.items ?? []).map((i) => i.photoId),
+        titles: (o.items ?? []).map((i) => i.title).join(", "),
+      });
+    }
+    off += (data.orders ?? []).length;
+    if (!(data.orders ?? []).length || off >= data.total) break;
+  }
+  return { orders: out };
+}
+
+export async function importOrdersPage({ url, cookie, offset = 0, only }) {
+  const base = assertImportUrl(url);
+  const wanted = Array.isArray(only) ? new Set(only) : null; // null = todos
   const off = Math.max(0, Number(offset) || 0);
   const res = await oldFetch(base, cookie, `/api/admin/export?part=orders&offset=${off}&limit=100`);
   if (!res.ok) throw new HttpError(502, `Falha ao ler os pedidos do site antigo (${res.status}).`);
@@ -106,6 +133,7 @@ export async function importOrdersPage({ url, cookie, offset = 0 }) {
   let imported = 0;
   let skipped = 0;
   for (const o of data.orders ?? []) {
+    if (wanted && !wanted.has(o.id)) continue;
     const valid =
       /^[0-9a-f]{64}$/.test(o.id) && typeof o.code === "string" && ORDER_STATUS.has(o.status) && Number.isInteger(o.amountCents) && o.amountCents > 0 &&
       typeof o.email === "string" && typeof o.pix === "string" && Array.isArray(o.items) && o.items.length > 0 &&

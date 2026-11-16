@@ -158,6 +158,20 @@ await call("/api/admin/password", { method: "POST", body: JSON.stringify({ curre
 r = await J(await call("/api/admin/login", { method: "POST", body: JSON.stringify({ password: PASS }) }));
 cookie = r.r.headers.getSetCookie()[0].split(";")[0];
 ok("troca de senha encerra sessões antigas e a nova senha funciona");
+// limpeza: excluir pedido e apagar tudo (exige confirmação digitada)
+r = await J(await call("/api/admin/data/clear", { method: "POST", body: JSON.stringify({ what: "all", confirm: "x" }) }));
+assert.equal(r.s, 400);
+r = await J(await call("/api/admin/orders"));
+const some = r.b.orders[0];
+assert.equal((await call(`/api/admin/orders/${some.id}`, { method: "DELETE" })).status, 200);
+assert.equal((await call(`/api/admin/orders/${some.id}`, { method: "DELETE" })).status, 404);
+r = await J(await call("/api/admin/data/clear", { method: "POST", body: JSON.stringify({ what: "all", confirm: "APAGAR" }) }));
+assert.equal(r.s, 200);
+r = await J(await call("/api/admin/orders"));
+assert.equal(r.b.orders.length, 0);
+r = await J(await call("/api/photos"));
+assert.equal(r.b.photos.length, 0);
+ok("excluir pedido e limpar tudo deixa o site vazio");
 let locked = false;
 for (let i = 0; i < 7; i++) {
   const x = await fetch(BASE + "/api/admin/login", { method: "POST", headers: { origin: BASE, "x-forwarded-for": "9.9.9.9" }, body: JSON.stringify({ password: "x" + i }) });

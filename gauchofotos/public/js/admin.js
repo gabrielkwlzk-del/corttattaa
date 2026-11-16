@@ -208,8 +208,16 @@ function orderDrawer(o) {
            <button class="btn btn-sky btn-block" id="ok" type="button" disabled>Confirmar e liberar download</button>
            <button class="btn btn-danger btn-block" id="cx" type="button">Cancelar pedido</button>`
         : ""
-    }`);
+    }
+    <button class="btn btn-glass btn-block" id="del" type="button" style="color:#fca5a5">Excluir este pedido definitivamente</button>`);
   $("#dx", p).addEventListener("click", closeDrawer);
+  $("#del", p).addEventListener("click", async () => {
+    if (!confirm(`Excluir o pedido ${o.code}? O cliente perde o acesso aos arquivos. Isso não pode ser desfeito.`)) return;
+    await guard(() => api(`/api/admin/orders/${o.id}`, { method: "DELETE" }));
+    toast("Pedido excluído.");
+    closeDrawer();
+    route();
+  });
   const ck = $("#ck", p);
   ck?.addEventListener("change", () => ($("#ok", p).disabled = !ck.checked));
   $("#ok", p)?.addEventListener("click", async (e) => {
@@ -425,11 +433,13 @@ async function viewSettings(main) {
         <form id="pw" class="form"><input class="field" type="password" id="pw-c" placeholder="Senha atual" autocomplete="current-password" aria-label="Senha atual"><input class="field" type="password" id="pw-n" placeholder="Nova senha (mín. 8 caracteres)" autocomplete="new-password" aria-label="Nova senha"><button class="btn btn-glass">Alterar senha</button><p class="err hidden" id="pw-e" role="alert"></p></form></section>
       <section class="glass card"><h2 style="font-size:1.05rem;font-weight:600">Backup dos dados</h2><p class="muted" style="font-size:.875rem;margin:4px 0 16px">Baixa um arquivo com todas as fotos (informações) e todos os pedidos. As imagens ficam guardadas com segurança no armazenamento do site.</p>
         <button class="btn btn-glass" id="bk" type="button">${small(icons.download)} Baixar backup</button></section>
-      <section class="glass card" style="grid-column:1/-1"><h2 style="font-size:1.05rem;font-weight:600">Importar do site antigo (Netlify)</h2><p class="muted" style="font-size:.875rem;margin:4px 0 16px;max-width:680px">Traz as fotos, os pedidos e o preço padrão do site antigo. Os links dos pedidos dos clientes continuam funcionando neste endereço. É seguro repetir: nada é duplicado.</p>
+      <section class="glass card"><h2 style="font-size:1.05rem;font-weight:600">Limpar dados de teste</h2><p class="muted" style="font-size:.875rem;margin:4px 0 16px">Apaga pedidos ou fotos de teste de uma vez. Fotos com pedido de cliente só são removidas depois que o pedido for excluído.</p>
+        <form id="clr" class="form"><select class="field" id="clr-w" aria-label="O que apagar"><option value="orders">Todos os pedidos</option><option value="photos">Todas as fotos sem pedido</option><option value="all">Tudo (pedidos e fotos)</option></select>
+          <input class="field" id="clr-c" placeholder="Digite APAGAR para confirmar" autocomplete="off" aria-label="Confirmação"><button class="btn btn-danger">Apagar</button></form></section>
+      <section class="glass card" style="grid-column:1/-1"><h2 style="font-size:1.05rem;font-weight:600">Importar do site antigo (Netlify)</h2><p class="muted" style="font-size:.875rem;margin:4px 0 16px;max-width:680px">Você escolhe exatamente o que trazer: nada é importado sem a sua seleção, então fotos e pedidos de teste ficam de fora. Os links dos pedidos dos clientes continuam funcionando neste endereço. É seguro repetir: nada é duplicado.</p>
         <form id="im" class="form" style="max-width:520px"><div><label class="label" for="im-url">Endereço do site antigo</label><input class="field" id="im-url" placeholder="https://seusite.netlify.app" autocomplete="off" spellcheck="false"></div>
           <div><label class="label" for="im-pw">Senha do painel do site antigo</label><input class="field" id="im-pw" type="password" autocomplete="off"></div>
-          <label class="check"><input type="checkbox" id="im-keep"> Usar essa senha também como senha deste painel</label>
-          <button class="btn btn-sky" id="im-go">Importar tudo</button></form>
+          <button class="btn btn-sky" id="im-go">Ver o que existe</button></form>
         <div id="im-box" class="hidden" style="margin-top:20px"><div class="progress"><i id="im-bar"></i></div><ul id="im-log" class="im-log"></ul></div></section>
     </div>`;
   $("#sp").addEventListener("submit", async (e) => {
@@ -437,6 +447,17 @@ async function viewSettings(main) {
     await guard(() => api("/api/admin/settings", { method: "PUT", json: { defaultPrice: $("#sp-v").value } })).then(() => toast("Preço padrão atualizado."));
   });
   $("#bk").addEventListener("click", downloadBackup);
+  $("#clr").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const what = $("#clr-w").value;
+    if (!confirm("Apagar de forma definitiva? Isso não pode ser desfeito.")) return;
+    const r = await guard(() => api("/api/admin/data/clear", { method: "POST", json: { what, confirm: $("#clr-c").value.trim() } }));
+    if (r) {
+      toast(`Removido: ${r.orders} pedidos e ${r.photos} fotos.`);
+      $("#clr-c").value = "";
+      setBadge();
+    }
+  });
   $("#im").addEventListener("submit", (e) => (e.preventDefault(), runImport()));
   $("#pw").addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -481,10 +502,8 @@ async function downloadBackup() {
 async function runImport() {
   const url = $("#im-url").value.trim();
   const password = $("#im-pw").value;
-  const keep = $("#im-keep").checked;
   const box = $("#im-box");
   const log = $("#im-log");
-  const bar = $("#im-bar");
   const go = $("#im-go");
   const line = (t, cls = "") => {
     log.insertAdjacentHTML("beforeend", `<li class="${cls}">${esc(t)}</li>`);
@@ -492,19 +511,53 @@ async function runImport() {
   };
   box.classList.remove("hidden");
   log.innerHTML = "";
-  bar.style.width = "0%";
+  $("#im-bar").style.width = "0%";
   go.disabled = true;
   try {
     line("Entrando no site antigo…");
     const { cookie, meta } = await api("/api/admin/import/start", { method: "POST", json: { url, password } });
     const photos = meta.photos.filter((p) => /^[0-9a-f-]{36}$/i.test(p.id));
-    const total = photos.length + Math.max(1, Math.ceil(meta.ordersTotal / 100)) + 1;
-    let done = 0;
-    const tick = () => (bar.style.width = `${Math.min(100, (++done / total) * 100)}%`);
-    line(`Encontrei ${photos.length} fotos e ${meta.ordersTotal} pedidos.`);
+    const { orders } = await api("/api/admin/import/orders-list", { method: "POST", json: { url, cookie } });
+    log.innerHTML = "";
+    if (!photos.length && !orders.length) return line("O site antigo não tem fotos nem pedidos.", "ok");
+    const sel = document.createElement("li");
+    sel.className = "im-sel";
+    sel.innerHTML = `<p class="muted" style="font-size:.875rem">Marque só o que é de cliente de verdade. Nada vem marcado.</p>
+      <h3 style="font-size:.95rem;margin:12px 0 6px">Pedidos (${orders.length})</h3>
+      <div class="im-pick">${orders.map((o) => `<label class="check"><input type="checkbox" data-o="${esc(o.id)}"> <span>${esc(o.code)} · ${esc(STATUS[o.status]?.[1] ?? o.status)} · ${price(o.amountCents)} · ${esc(o.email)} · ${esc(o.titles)}</span></label>`).join("") || '<p class="muted">Nenhum pedido.</p>'}</div>
+      <h3 style="font-size:.95rem;margin:12px 0 6px">Fotos (${photos.length})</h3>
+      <div class="im-pick">${photos.map((p) => `<label class="check"><input type="checkbox" data-p="${esc(p.id)}"> <span>${esc(p.title || "Sem título")}</span></label>`).join("") || '<p class="muted">Nenhuma foto.</p>'}</div>
+      <p class="muted" style="font-size:.8rem;margin:8px 0">Fotos dos pedidos marcados vêm automaticamente.</p>
+      <button class="btn btn-sky" type="button" id="im-run">Importar selecionados</button>`;
+    log.appendChild(sel);
+    $("#im-run").addEventListener("click", () => importSelected({ url, cookie, photos, orders }));
+  } catch (e) {
+    line(e.message, "bad");
+  } finally {
+    go.disabled = false;
+  }
+}
+
+async function importSelected({ url, cookie, photos, orders }) {
+  const log = $("#im-log");
+  const bar = $("#im-bar");
+  const pickedOrders = new Set($$("[data-o]:checked", log).map((i) => i.dataset.o));
+  const pickedPhotos = new Set($$("[data-p]:checked", log).map((i) => i.dataset.p));
+  orders.filter((o) => pickedOrders.has(o.id)).forEach((o) => o.photoIds.forEach((id) => pickedPhotos.add(id)));
+  if (!pickedOrders.size && !pickedPhotos.size) return toast("Marque pelo menos um item.");
+  const chosen = photos.filter((p) => pickedPhotos.has(p.id));
+  log.innerHTML = "";
+  const line = (t, cls = "") => {
+    log.insertAdjacentHTML("beforeend", `<li class="${cls}">${esc(t)}</li>`);
+    log.lastElementChild.scrollIntoView({ block: "nearest" });
+  };
+  const total = chosen.length + 1;
+  let done = 0;
+  const tick = () => (bar.style.width = `${Math.min(100, (++done / total) * 100)}%`);
+  try {
     let okPhotos = 0;
     const failed = [];
-    for (const p of photos) {
+    for (const p of chosen) {
       try {
         const r = await api("/api/admin/import/photo", { method: "POST", json: { url, cookie, photo: p } });
         if (r.skipped) failed.push(`${p.title || p.id}: ${r.skipped}`);
@@ -512,28 +565,25 @@ async function runImport() {
       } catch (e) {
         failed.push(`${p.title || p.id}: ${e.message}`);
       }
-      line(`Foto ${okPhotos + failed.length}/${photos.length}: ${p.title || "sem título"}`);
+      line(`Foto ${okPhotos + failed.length}/${chosen.length}: ${p.title || "sem título"}`);
       tick();
     }
-    let orders = 0;
-    for (let off = 0; ; ) {
-      const r = await api("/api/admin/import/orders", { method: "POST", json: { url, cookie, offset: off } });
-      orders += r.imported;
-      tick();
-      if (r.next == null) break;
-      off = r.next;
+    let imported = 0;
+    if (pickedOrders.size) {
+      for (let off = 0; ; ) {
+        const r = await api("/api/admin/import/orders", { method: "POST", json: { url, cookie, offset: off, only: [...pickedOrders] } });
+        imported += r.imported;
+        if (r.next == null) break;
+        off = r.next;
+      }
     }
-    line(`Pedidos importados: ${orders}.`);
-    await api("/api/admin/import/config", { method: "POST", json: { url, cookie, password, keepPassword: keep } });
     tick();
     bar.style.width = "100%";
-    line(`Pronto! ${okPhotos} fotos e ${orders} pedidos novos importados.${keep ? " A senha deste painel agora é a do site antigo." : ""}`, "ok");
+    line(`Pronto! ${okPhotos} fotos e ${imported} pedidos importados.`, "ok");
     failed.forEach((f) => line(`Atenção: ${f}`, "bad"));
     toast("Importação concluída.");
   } catch (e) {
     line(e.message, "bad");
-  } finally {
-    go.disabled = false;
   }
 }
 

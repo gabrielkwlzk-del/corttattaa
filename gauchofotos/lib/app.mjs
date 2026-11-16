@@ -32,7 +32,7 @@ import {
 } from "./http.mjs";
 import { IMAGE_TYPES, ingest, safeFilename } from "./photos.mjs";
 import * as repo from "./repo.mjs";
-import { importConfig, importOrdersPage, importPhoto, importStart } from "./importer.mjs";
+import { importConfig, importOrdersList, importOrdersPage, importPhoto, importStart } from "./importer.mjs";
 
 // ------------------------------------------------------------- configuração --
 const PIX_KEY = () => process.env.PIX_KEY || "47992145561";
@@ -147,6 +147,12 @@ async function publicOrder(o) {
     out.qrSvg = await QRCode.toString(o.pix, { type: "svg", errorCorrectionLevel: "M", margin: 1, color: { dark: "#08090D", light: "#FFFFFF" } });
   }
   return out;
+}
+
+async function deleteFiles(paths) {
+  for (let i = 0; i < paths.length; i += 100) {
+    await files().del(paths.slice(i, i + 100)).catch((e) => console.error("[del]", e));
+  }
 }
 
 // ------------------------------------------------------------------ envios ----
@@ -415,7 +421,7 @@ async function route(req) {
           return json({ archived: true });
         }
         await repo.removePhoto(p.id);
-        await files().del([p.original_path, p.preview_path, p.thumb_path, p.hero_path]).catch((e) => console.error("[del]", e));
+        await deleteFiles([p.original_path, p.preview_path, p.thumb_path, p.hero_path].filter(Boolean));
         return json({ removed: true });
       }
     }
@@ -437,6 +443,20 @@ async function route(req) {
         })),
         stats,
       });
+    }
+    if (parts[1] === "orders" && parts[2] && parts.length === 3 && m === "DELETE") {
+      const r = await repo.deleteOrderById(parts[2]);
+      if (!r.deleted) throw new HttpError(404, "Pedido não encontrado.");
+      await deleteFiles(r.paths);
+      return json({ ok: true });
+    }
+    if (path === "admin/data/clear" && m === "POST") {
+      const b = await req.json().catch(() => ({}));
+      if (b.confirm !== "APAGAR") throw new HttpError(400, 'Digite APAGAR para confirmar.');
+      if (!["orders", "photos", "all"].includes(b.what)) throw new HttpError(400, "Escolha o que apagar.");
+      const r = await repo.clearData(b.what);
+      await deleteFiles(r.paths);
+      return json({ ok: true, orders: r.orders, photos: r.photos });
     }
     if (parts[1] === "orders" && parts[2] && parts[3] && m === "POST") {
       const order = await repo.orderById(parts[2]);
@@ -492,6 +512,7 @@ async function route(req) {
     // ---------- importação do site antigo (Netlify)
     if (path === "admin/import/start" && m === "POST") return json(await importStart(await req.json().catch(() => ({}))));
     if (path === "admin/import/photo" && m === "POST") return json(await importPhoto(await req.json().catch(() => ({}))));
+    if (path === "admin/import/orders-list" && m === "POST") return json(await importOrdersList(await req.json().catch(() => ({}))));
     if (path === "admin/import/orders" && m === "POST") return json(await importOrdersPage(await req.json().catch(() => ({}))));
     if (path === "admin/import/config" && m === "POST") return json(await importConfig(await req.json().catch(() => ({}))));
   }

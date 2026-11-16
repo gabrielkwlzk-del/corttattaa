@@ -260,3 +260,49 @@ export async function importOrder(o) {
     }),
   );
 }
+
+// ------------------------------------------------------ limpeza de dados ----
+// Remove fotos arquivadas que nenhum pedido usa mais e devolve os caminhos dos arquivos a apagar.
+async function purgeArchived(t, photoIds) {
+  if (!photoIds.length) return [];
+  const rows = await t`select id, original_path, preview_path, thumb_path, hero_path from photos p
+                        where id in ${t(photoIds)} and deleted and not exists (select 1 from order_items i where i.photo_id = p.id)`;
+  if (rows.length) await t`delete from photos where id in ${t(rows.map((r) => r.id))}`;
+  return rows.flatMap((r) => [r.original_path, r.preview_path, r.thumb_path, r.hero_path]).filter(Boolean);
+}
+
+export async function deleteOrderById(id) {
+  return withDb((s) =>
+    s.begin(async (t) => {
+      const items = await t`select photo_id from order_items where order_id = ${id}`;
+      const gone = await t`delete from orders where id = ${id} returning id`;
+      const paths = await purgeArchived(t, items.map((i) => i.photo_id));
+      return { deleted: gone.length > 0, paths };
+    }),
+  );
+}
+
+/** what: "orders" | "photos" | "all". Fotos que ainda têm pedido só são arquivadas (o comprador mantém o acesso). */
+export async function clearData(what) {
+  return withDb((s) =>
+    s.begin(async (t) => {
+      const paths = [];
+      let orders = 0;
+      let photos = 0;
+      if (what === "orders" || what === "all") {
+        const ph = await t`select distinct photo_id from order_items`;
+        orders = (await t`delete from orders returning id`).length;
+        paths.push(...(await purgeArchived(t, ph.map((r) => r.photo_id))));
+      }
+      if (what === "photos" || what === "all") {
+        const rows = await t`select id, original_path, preview_path, thumb_path, hero_path from photos p
+                              where not exists (select 1 from order_items i where i.photo_id = p.id)`;
+        if (rows.length) await t`delete from photos where id in ${t(rows.map((r) => r.id))}`;
+        photos = rows.length;
+        paths.push(...rows.flatMap((r) => [r.original_path, r.preview_path, r.thumb_path, r.hero_path]).filter(Boolean));
+        await t`update photos set deleted = true, hidden = true where not deleted`;
+      }
+      return { orders, photos, paths };
+    }),
+  );
+}

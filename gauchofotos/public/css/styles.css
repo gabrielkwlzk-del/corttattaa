@@ -355,3 +355,6 @@ body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-even
 .empty p { line-height: 1.6; }
 ::-webkit-scrollbar { width: 10px; height: 10px; } ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 99px; border: 2px solid var(--ink); } ::-webkit-scrollbar-track { background: transparent; }
 @media (prefers-reduced-motion: reduce) { .main > * { animation: none; } }
+.im-pick{display:flex;flex-direction:column;gap:6px;max-height:240px;overflow:auto;padding:8px;border:1px solid rgba(255,255,255,.1);border-radius:12px}
+.im-pick .check{align-items:flex-start;font-size:.85rem}
+.im-sel{list-style:none}
