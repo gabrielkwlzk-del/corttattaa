@@ -24,14 +24,14 @@ export async function POST(req:Request,{params}:{params:Promise<{action:string}>
       const ip=req.headers.get('x-forwarded-for')?.split(',')[0]||'unknown';
       const hash=createHash('sha256').update(ip+(process.env.SESSION_SECRET||'')).digest('hex');
       const supa=db(); const cutoff=new Date(Date.now()-15*60000).toISOString();
+      const {password}=await req.json();
+      if(typeof password==='string'&&passwordMatches(password)){
+        await supa.from('admin_login_attempts').delete().eq('ip_hash',hash);
+        const response=json({ok:true}); response.headers.append('Set-Cookie',`admin_session=${makeSession()}; Path=/; Max-Age=604800; HttpOnly; Secure; SameSite=Strict`); return response;
+      }
       const {count,error}=await supa.from('admin_login_attempts').select('id',{count:'exact',head:true}).eq('ip_hash',hash).gte('created_at',cutoff);
       if(error) throw error; if((count||0)>=5) return json({error:'Muitas tentativas. Aguarde 15 minutos.'},429);
-      const {password}=await req.json();
-      if(typeof password!=='string'||!passwordMatches(password)){
-        await supa.from('admin_login_attempts').insert({ip_hash:hash}); return json({error:'Senha incorreta.'},401);
-      }
-      await supa.from('admin_login_attempts').delete().eq('ip_hash',hash);
-      const response=json({ok:true}); response.headers.append('Set-Cookie',`admin_session=${makeSession()}; Path=/; Max-Age=604800; HttpOnly; Secure; SameSite=Strict`); return response;
+      await supa.from('admin_login_attempts').insert({ip_hash:hash}); return json({error:'Senha incorreta.'},401);
     }
     await requireAdmin();
     const origin=req.headers.get('origin'); if(origin&&new URL(origin).host!==new URL(req.url).host) return json({error:'Origem inválida.'},403);

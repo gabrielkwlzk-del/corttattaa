@@ -7,6 +7,7 @@ test('pasta → upload → compra → confirmação → original → limpeza', {
   let cookie='',folder,photo,order;
   async function api(path,body,auth=true){const r=await fetch(`${base}${path}`,{method:'POST',headers:{'Content-Type':'application/json',...(auth?{Cookie:cookie}:{})},body:JSON.stringify(body)});const d=await r.json();assert.ok(r.ok,`${path}: ${JSON.stringify(d)}`);return {r,d};}
   try{
+    for(let i=0;i<5;i++){const wrong=await fetch(`${base}/api/admin/login`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:'senha-errada'})});assert.equal(wrong.status,401);}
     const login=await api('/api/admin/login',{password},false);cookie=login.r.headers.get('set-cookie')?.split(';')[0]||'';assert.ok(cookie);
     folder=(await api('/api/admin/folder',{op:'create',name:`Teste ${Date.now()}`,default_price_cents:1250})).d;
     const image=await sharp({create:{width:800,height:600,channels:3,background:{r:10,g:100,b:180}}}).withMetadata({orientation:6}).jpeg().toBuffer();
