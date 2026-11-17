@@ -15,6 +15,8 @@ test('pasta → upload → compra → confirmação → original → limpeza', {
     const ready=(await api('/api/admin/upload-finish',{id:photo.id})).d;assert.ok(ready.visible&&ready.preview_path);
     const catalog=await (await fetch(`${base}/api/public/catalog`)).json();assert.ok(catalog.photos.some(p=>p.id===photo.id));
     order=(await api('/api/public/checkout',{name:'Teste de fluxo',email:'teste@example.com',photo_ids:[photo.id]},false)).d;assert.equal(order.total_cents,1250);
+    assert.ok(order.pix_code.includes('0114+5547992145561'),'Chave Pix deve estar em E.164');
+    let crc=0xffff;for(const byte of Buffer.from(order.pix_code.slice(0,-4))){crc^=byte<<8;for(let i=0;i<8;i++)crc=crc&0x8000?((crc<<1)^0x1021)&0xffff:(crc<<1)&0xffff;}assert.equal(order.pix_code.slice(-4),crc.toString(16).toUpperCase().padStart(4,'0'));
     const before=await fetch(`${base}/api/order/${order.token}/baixar/${photo.id}`,{redirect:'manual'});assert.equal(before.status,403);
     const admin=await (await fetch(`${base}/api/admin/data`,{headers:{Cookie:cookie}})).json();const record=admin.orders.find(o=>o.token===order.token);assert.ok(record);
     await api('/api/admin/order',{op:'paid',id:record.id});
