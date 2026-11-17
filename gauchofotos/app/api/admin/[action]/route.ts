@@ -78,9 +78,10 @@ export async function POST(req:Request,{params}:{params:Promise<{action:string}>
     if(action==='order'){
       if(body.op==='paid'){
         const r=await s.from('orders').update({status:'pago',paid_at:new Date().toISOString()}).eq('id',body.id).select().single();if(r.error)throw r.error;
+        if(process.env.EMAIL_ENABLED!=='true') return json({ok:true,email:'desativado'});
         try{await emailOrder(body.id);return json({ok:true,email:'enviado'});}catch(e){const message=e instanceof Error?e.message:String(e);await s.from('orders').update({email_error:message}).eq('id',body.id);return json({ok:true,email:'falhou',error:message});}
       }
-      if(body.op==='resend'){try{await emailOrder(body.id);return json({ok:true});}catch(e){const message=e instanceof Error?e.message:String(e);await s.from('orders').update({email_error:message}).eq('id',body.id);return json({error:message},502);}}
+      if(body.op==='resend'){if(process.env.EMAIL_ENABLED!=='true')return json({error:'Envio por e-mail desativado.'},400);try{await emailOrder(body.id);return json({ok:true});}catch(e){const message=e instanceof Error?e.message:String(e);await s.from('orders').update({email_error:message}).eq('id',body.id);return json({error:message},502);}}
       if(body.op==='delete'){const r=await s.from('orders').delete().eq('id',body.id);if(r.error)throw r.error;return json({ok:true});}
     }
     return json({error:'Ação inválida.'},400);
@@ -92,7 +93,7 @@ export async function GET(_req:Request,{params}:{params:Promise<{action:string}>
       const [folders,photos,orders,items]=await Promise.all([s.from('folders').select('*').order('created_at'),s.from('photos').select('*').order('created_at',{ascending:false}),s.from('orders').select('*').order('created_at',{ascending:false}),s.from('order_items').select('*')]);
       for(const r of [folders,photos,orders,items])if(r.error)throw r.error;
       const signedPhotos=await Promise.all((photos.data||[]).map(async(p:any)=>({...p,preview_url:p.preview_path?await signed('previews',p.preview_path,300):null})));
-      return json({folders:folders.data,photos:signedPhotos,orders:orders.data,items:items.data});
+      return json({folders:folders.data,photos:signedPhotos,orders:orders.data,items:items.data,email_enabled:process.env.EMAIL_ENABLED==='true'});
     }
     return json({error:'Ação inválida.'},400);
   }catch(e){return fail(e,e instanceof Error&&e.message==='Acesso não autorizado.'?401:500);}
