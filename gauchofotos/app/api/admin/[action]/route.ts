@@ -64,6 +64,15 @@ export async function POST(req:Request,{params}:{params:Promise<{action:string}>
       const {data:ready,error:re}=await s.from('photos').update({preview_path:previewPath,visible:true}).eq('id',photo.id).select().single();if(re)throw re;
       return json(ready);
     }
+    if(action==='watermark-refresh'){
+      const {data:photo,error:pe}=await s.from('photos').select('*').eq('id',body.id).single();if(pe||!photo)throw pe||new Error('Foto não encontrada.');
+      const {data:original,error:oe}=await s.storage.from('originais').download(photo.original_path);if(oe||!original)throw oe||new Error('Original não encontrado no Storage.');
+      const preview=await watermark(Buffer.from(await original.arrayBuffer()));const previousPath=photo.preview_path;const previewPath=`${photo.folder_id}/${photo.id}-${Date.now()}.jpg`;
+      const {error:ue}=await s.storage.from('previews').upload(previewPath,preview,{contentType:'image/jpeg',upsert:true});if(ue)throw ue;
+      const {data:ready,error:re}=await s.from('photos').update({preview_path:previewPath}).eq('id',photo.id).select().single();if(re)throw re;
+      if(previousPath&&previousPath!==previewPath)await s.storage.from('previews').remove([previousPath]);
+      return json(ready);
+    }
     if(action==='photo'){
       if(body.op==='update'){const patch:any={};if(body.visible!==undefined)patch.visible=!!body.visible;if(body.price_cents!==undefined)patch.price_cents=body.price_cents===null?null:Number(body.price_cents);const r=await s.from('photos').update(patch).eq('id',body.id).select().single();if(r.error)throw r.error;return json(r.data);}
       if(body.op==='delete'){

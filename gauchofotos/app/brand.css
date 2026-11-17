@@ -1,0 +1,120 @@
+/* Identidade visual Esporte Show Online */
+:root {
+  --bg: #070b08;
+  --panel: #111a13;
+  --line: #2b3b2e;
+  --text: #f6f8f5;
+  --muted: #a8b3aa;
+  --gold: #75f000;
+}
+
+html,
+body {
+  background: radial-gradient(circle at 80% -10%, rgba(82, 191, 22, 0.12), transparent 34%), var(--bg);
+}
+
+.site-header {
+  min-height: 92px;
+  background: rgba(7, 11, 8, 0.94);
+  backdrop-filter: blur(14px);
+  position: relative;
+  z-index: 12;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  line-height: 0;
+}
+
+.brand-logo {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 0 0 2px #75f000, 0 10px 30px rgba(0, 0, 0, 0.45);
+}
+
+.site-header .cart-button {
+  border-color: #3d573f;
+  background: #142016;
+}
+
+.brand-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  max-width: none;
+  min-height: clamp(520px, 68vw, 760px);
+  margin: 28px 0 84px;
+  padding: clamp(62px, 9vw, 120px) clamp(24px, 6vw, 84px);
+  border: 1px solid #2f4732;
+  border-radius: 18px;
+  display: flex;
+  align-items: flex-end;
+}
+
+.hero-media,
+.hero-shade {
+  position: absolute;
+  inset: 0;
+}
+
+.hero-media {
+  z-index: -2;
+  background: #101610;
+}
+
+.hero-media img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  animation: heroCycle 18s infinite;
+}
+
+.hero-media img:nth-child(1) { animation-delay: 0s; object-position: center; }
+.hero-media img:nth-child(2) { animation-delay: 6s; object-position: 64% center; }
+.hero-media img:nth-child(3) { animation-delay: 12s; object-position: 64% center; }
+
+.hero-shade {
+  z-index: -1;
+  background:
+    linear-gradient(90deg, rgba(3, 7, 4, 0.96) 0%, rgba(3, 7, 4, 0.84) 38%, rgba(3, 7, 4, 0.36) 70%, rgba(3, 7, 4, 0.46) 100%),
+    linear-gradient(0deg, rgba(3, 7, 4, 0.7), transparent 48%);
+}
+
+.hero-copy { max-width: 720px; }
+.hero-copy .kicker { color: #75f000; text-shadow: 0 1px 8px #000; }
+.hero-copy h1 { font-size: clamp(50px, 8vw, 104px); text-shadow: 0 4px 26px rgba(0, 0, 0, 0.72); }
+.hero-copy > p:last-child { max-width: 590px; line-height: 1.6; color: #e2e8e2; font-size: clamp(17px, 2vw, 20px); text-shadow: 0 2px 12px #000; }
+.folder-placeholder { background: linear-gradient(135deg, #1e3c22, #0b130d 70%); }
+.folder-card { border-color: #2b4930; }
+
+@keyframes heroCycle {
+  0%, 28% { opacity: 1; transform: scale(1); }
+  33%, 95% { opacity: 0; transform: scale(1.035); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@media (max-width: 800px) {
+  .brand-hero { min-height: 600px; margin-top: 18px; padding: 48px 26px; }
+  .hero-shade { background: linear-gradient(0deg, rgba(3, 7, 4, 0.98) 0%, rgba(3, 7, 4, 0.78) 54%, rgba(3, 7, 4, 0.3) 100%); }
+  .hero-media img:nth-child(1) { object-position: center; }
+  .hero-media img:nth-child(2), .hero-media img:nth-child(3) { object-position: 68% center; }
+}
+
+@media (max-width: 560px) {
+  .site-header { min-height: 72px; }
+  .brand-logo { width: 52px; height: 52px; }
+  .panel-login { top: 68px; }
+  .brand-hero { min-height: 560px; margin: 14px -1px 58px; padding: 36px 22px; border-radius: 12px; }
+  .hero-copy h1 { font-size: clamp(44px, 15vw, 68px); margin-bottom: 18px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-media img { animation: none; opacity: 0; }
+  .hero-media img:nth-child(2) { opacity: 1; }
+}
