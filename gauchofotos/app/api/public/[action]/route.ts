@@ -27,7 +27,7 @@ export async function POST(req:Request,{params}:{params:Promise<{action:string}>
       const name=String(body.name||'').trim(),email=String(body.email||'').trim().toLowerCase();
       const ids=[...new Set((Array.isArray(body.photo_ids)?body.photo_ids:[]).map(String))];
       if(!name||name.length>120||!/^\S+@\S+\.\S+$/.test(email)||ids.length<1||ids.length>100)return json({error:'Informe nome, e-mail e escolha fotos.'},400);
-      const {data:photos,error:pe}=await s.from('photos').select('id,price_cents,folder_id,folders(default_price_cents)').in('id',ids).eq('visible',true).not('preview_path','is',null);if(pe)throw pe;
+      const {data:photos,error:pe}=await s.from('photos').select('id,price_cents,folder_id,folders!photos_folder_id_fkey(default_price_cents)').in('id',ids).eq('visible',true).not('preview_path','is',null);if(pe)throw pe;
       if(!photos||photos.length!==ids.length)return json({error:'Uma foto não está mais disponível.'},409);
       const priced=photos.map((p:any)=>({photo_id:p.id,price_cents:p.price_cents??p.folders.default_price_cents}));
       const total=priced.reduce((n,p)=>n+p.price_cents,0);const tok=token();const code=pixCode(total,tok.replace(/[^A-Za-z0-9]/g,'').slice(0,25));
