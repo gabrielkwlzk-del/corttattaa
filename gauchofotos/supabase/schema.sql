@@ -1,0 +1,15 @@
+create extension if not exists pgcrypto;
+create table if not exists public.folders (id uuid primary key default gen_random_uuid(), name text not null unique, cover_photo_id uuid, default_price_cents integer not null default 1500 check(default_price_cents>=100), created_at timestamptz not null default now());
+create table if not exists public.photos (id uuid primary key default gen_random_uuid(), folder_id uuid not null references public.folders(id) on delete restrict, original_path text not null unique, preview_path text unique, filename text not null, price_cents integer check(price_cents>=100), visible boolean not null default false, created_at timestamptz not null default now());
+alter table public.folders add constraint folders_cover_photo_fk foreign key (cover_photo_id) references public.photos(id) on delete set null;
+create table if not exists public.orders (id uuid primary key default gen_random_uuid(), token text not null unique, name text not null, email text not null, status text not null default 'pendente' check(status in ('pendente','pago')), total_cents integer not null check(total_cents>0), pix_code text not null, customer_notified boolean not null default false, email_error text, paid_at timestamptz, created_at timestamptz not null default now());
+create table if not exists public.order_items (order_id uuid not null references public.orders(id) on delete cascade, photo_id uuid not null references public.photos(id) on delete restrict, price_cents integer not null, primary key(order_id,photo_id));
+create table if not exists public.admin_login_attempts (id uuid primary key default gen_random_uuid(), ip_hash text not null, created_at timestamptz not null default now());
+create index if not exists admin_login_attempts_lookup on public.admin_login_attempts(ip_hash,created_at);
+alter table public.folders enable row level security;
+alter table public.photos enable row level security;
+alter table public.orders enable row level security;
+alter table public.order_items enable row level security;
+alter table public.admin_login_attempts enable row level security;
+revoke all on public.folders,public.photos,public.orders,public.order_items,public.admin_login_attempts from anon,authenticated;
+insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types) values ('previews','previews',false,31457280,array['image/jpeg']),('originais','originais',false,31457280,array['image/jpeg','image/png','image/webp','image/heic','image/avif']) on conflict(id) do update set public=false,file_size_limit=31457280;
